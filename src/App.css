@@ -1,0 +1,285 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family:
+    Aptos,
+    "Segoe UI",
+    Arial,
+    sans-serif;
+  background: #f4f7fb;
+  color: #172033;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 20px;
+}
+
+.form-container {
+  width: 100%;
+  max-width: 650px;
+  background: white;
+  border-radius: 16px;
+  padding: 40px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+}
+
+.form-header {
+  margin-bottom: 35px;
+}
+
+.form-header h1 {
+  margin: 0 0 30px;
+  text-align: center;
+  font-size: 32px;
+  color: #16213e;
+}
+
+.steps {
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+}
+
+.steps::before {
+  content: "";
+  position: absolute;
+  top: 16px;
+  left: 50px;
+  right: 50px;
+  height: 2px;
+  background: #e3e7ee;
+  z-index: 0;
+}
+
+.step {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  color: #8992a3;
+}
+
+.step span {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #e3e7ee;
+  color: #697386;
+  font-weight: 600;
+}
+
+.step.active span,
+.step.completed span {
+  background: #2563eb;
+  color: white;
+}
+
+.step.active,
+.step.completed {
+  color: #2563eb;
+}
+
+.step small {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.form-step h2 {
+  margin: 0 0 8px;
+  font-size: 22px;
+}
+
+.step-description {
+  margin: 0 0 30px;
+  color: #697386;
+  font-size: 14px;
+}
+
+.field {
+  margin-bottom: 24px;
+}
+
+.field > label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #30394d;
+}
+
+.field > label span {
+  color: #dc2626;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  border: 1px solid #d8dde7;
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: white;
+  color: #172033;
+  outline: none;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.input-error {
+  border-color: #dc2626;
+}
+
+.error {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  color: #dc2626;
+}
+
+.radio-group {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.radio-group.horizontal {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.radio-option {
+  display: flex !important;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #d8dde7;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 400 !important;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.radio-option:hover {
+  background: #f5f8ff;
+  border-color: #2563eb;
+}
+
+.radio-option input {
+  width: auto;
+  accent-color: #2563eb;
+}
+
+.input-with-unit {
+  position: relative;
+}
+
+.input-with-unit input {
+  padding-right: 45px;
+}
+
+.input-with-unit span {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #697386;
+  font-size: 14px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 35px;
+  padding-top: 25px;
+  border-top: 1px solid #edf0f5;
+}
+
+.button {
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    transform 0.1s;
+}
+
+.button:active {
+  transform: translateY(1px);
+}
+
+.button.primary {
+  margin-left: auto;
+  background: #2563eb;
+  color: white;
+}
+
+.button.primary:hover {
+  background: #1d4ed8;
+}
+
+.button.secondary {
+  background: #eef1f6;
+  color: #30394d;
+}
+
+.button.secondary:hover {
+  background: #e2e6ee;
+}
+
+@media (max-width: 600px) {
+  .page {
+    padding: 20px 10px;
+  }
+
+  .form-container {
+    padding: 25px 20px;
+  }
+
+  .form-header h1 {
+    font-size: 26px;
+  }
+
+  .radio-group {
+    grid-template-columns: 1fr;
+  }
+
+  .steps::before {
+    left: 35px;
+    right: 35px;
+  }
+}
