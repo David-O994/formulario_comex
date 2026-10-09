@@ -1,15 +1,35 @@
 {
   "name": "formulario",
-  "private": true,
   "version": "0.0.0",
+  "private": true,
+  "description": "This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.",
+  "homepage": "https://github.com/rocam23/formulario_comex#readme",
+  "bugs": {
+    "url": "https://github.com/rocam23/formulario_comex/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rocam23/formulario_comex.git"
+  },
   "type": "module",
+  "main": "eslint.config.js",
   "scripts": {
+    "start": "nodemon server.js",
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.6",
+    "express": "^5.2.1",
+    "hbs": "^4.3.1",
+    "mongoose": "^9.11.1",
+    "mysql": "^2.18.1",
+    "nodemon": "^3.1.14",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },
@@ -22,6 +42,6 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.6",
     "globals": "^17.12.0",
-    "vite": "^8.3.0"
+    "vite": "^8.3.2"
   }
 }

@@ -1,16 +1,102 @@
-# React + Vite
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+---
 
-Currently, two official plugins are available:
+# 📘 README – Proyecto ComercioTech
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🚀 Requisitos previos
+- **Node.js** (v18 o superior)
+- **npm** (incluido con Node.js)
+- **MongoDB** instalado localmente y corriendo en `localhost:27017`
+- **Visual Studio Code** (opcional, recomendado)
 
-## React Compiler
+---
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## ⚙️ Instalación
 
-## Expanding the ESLint configuration
+1. **Clonar el repositorio**
+   ```bash
+   git clone https://github.com/usuario/formulario_comex.git
+   cd formulario_comex
+   ```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+2. **Instalar dependencias**
+   ```bash
+   npm install
+   ```
+
+3. **Configurar la base de datos**
+   - Asegúrate de que MongoDB esté corriendo:
+     ```bash
+     mongod
+     ```
+   - La aplicación se conecta automáticamente a la base `cintac`.
+
+---
+
+## ▶️ Ejecución
+
+### 1. Backend (Express + MongoDB)
+En una terminal:
+```bash
+npm start
+```
+Esto levanta el servidor en:
+```
+http://localhost:3000
+```
+Verás en consola:
+```
+Servidor corriendo en http://localhost:3000
+✅ Conectado a MongoDB (BD cintac)
+```
+
+### 2. Frontend (React + Vite)
+En otra terminal:
+```bash
+npm run dev
+```
+Esto levanta el frontend en:
+```
+http://localhost:5173
+```
+
+---
+
+## 🔑 Flujo de uso
+
+1. **Registro/Login**  
+   - Crear usuario (`user` o `admin`).  
+   - Login para acceder al sistema.
+
+2. **Formulario de cotización**  
+   - Completar los 3 pasos: Ruta → Carga → Contacto.  
+   - Al finalizar, se guarda la cotización en la colección `quotations` de la BD `cintac`.
+
+3. **Informe de cotizaciones (solo admin)**  
+   - Si el usuario logueado es `admin`, se muestra una tabla con todas las cotizaciones registradas.
+
+---
+
+## 🛠️ Comandos útiles
+
+- **Reiniciar nodemon** (backend):
+  ```bash
+  rs
+  ```
+- **Verificar conexión MongoDB**:
+  ```bash
+  mongo
+  use cintac
+  show collections
+  db.quotations.find().pretty()
+  ```
+
+---
+
+## 🎯 Resumen
+- `npm install` → instala dependencias.  
+- `npm start` → backend en puerto 3000.  
+- `npm run dev` → frontend en puerto 5173.  
+- MongoDB debe estar corriendo en `localhost:27017` con BD `cintac`.  
+
+---

@@ -60,6 +60,18 @@ function App() {
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
 
+  const handleSubmit = async () => {
+  const res = await fetch('http://localhost:3000/api/cotizacion', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(form)
+  });
+  const data = await res.json();
+  console.log('📩 Respuesta cotización:', data);
+  alert(data.message || data.error);
+};
+
+
   const handleChange = (event) => {
     const { name, value } = event.target;
 
@@ -459,7 +471,7 @@ function App() {
                 Continuar
               </button>
             ) : (
-              <button type="button" className="button primary">
+              <button type="button" className="button primary" onClick={handleSubmit}>
                 Finalizar
                 </button>
             )}
