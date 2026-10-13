@@ -4,11 +4,7 @@
 
 body {
   margin: 0;
-  font-family:
-    Aptos,
-    "Segoe UI",
-    Arial,
-    sans-serif;
+  font-family: Aptos, sans-serif;
   background: #f4f7fb;
   color: #172033;
 }
@@ -18,6 +14,7 @@ input,
 select,
 textarea {
   font: inherit;
+  font-family: Aptos, sans-serif;
 }
 
 .page {
@@ -35,7 +32,25 @@ textarea {
   border-radius: 16px;
   padding: 40px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+  border: 1px solid #fa8a0e;
 }
+
+/* =========================
+   IMAGEN SUPERIOR
+========================= */
+
+.form-banner {
+  display: block;
+  width: 100%;
+  max-width: 595px;
+  height: auto;
+  margin: 0 auto 25px;
+  border-radius: 8px;
+}
+
+/* =========================
+   HEADER
+========================= */
 
 .form-header {
   margin-bottom: 35px;
@@ -47,6 +62,10 @@ textarea {
   font-size: 32px;
   color: #16213e;
 }
+
+/* =========================
+   PASOS
+========================= */
 
 .steps {
   display: flex;
@@ -87,6 +106,8 @@ textarea {
   font-weight: 600;
 }
 
+/* Ruta / Carga activas o completadas */
+
 .step.active span,
 .step.completed span {
   background: #2563eb;
@@ -102,6 +123,10 @@ textarea {
   font-size: 12px;
   font-weight: 600;
 }
+
+/* =========================
+   CONTENIDO
+========================= */
 
 .form-step h2 {
   margin: 0 0 8px;
@@ -130,11 +155,15 @@ textarea {
   color: #dc2626;
 }
 
+/* =========================
+   INPUTS
+========================= */
+
 input,
 select,
 textarea {
   width: 100%;
-  border: 1px solid #d8dde7;
+  border: 1px solid #fa8a0e;
   border-radius: 8px;
   padding: 12px 14px;
   background: white;
@@ -148,8 +177,8 @@ textarea {
 input:focus,
 select:focus,
 textarea:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  border-color: #fa8a0e;
+  box-shadow: 0 0 0 3px rgba(250, 138, 14, 0.15);
 }
 
 textarea {
@@ -168,6 +197,10 @@ textarea {
   color: #dc2626;
 }
 
+/* =========================
+   RADIO
+========================= */
+
 .radio-group {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -184,22 +217,28 @@ textarea {
   align-items: center;
   gap: 10px;
   padding: 12px;
-  border: 1px solid #d8dde7;
+  border: 1px solid #fa8a0e;
   border-radius: 8px;
   cursor: pointer;
   font-weight: 400 !important;
-  transition: background 0.2s, border-color 0.2s;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
 }
 
 .radio-option:hover {
-  background: #f5f8ff;
-  border-color: #2563eb;
+  background: #fff7ed;
+  border-color: #fa8a0e;
 }
 
 .radio-option input {
   width: auto;
   accent-color: #2563eb;
 }
+
+/* =========================
+   INPUT CON UNIDAD
+========================= */
 
 .input-with-unit {
   position: relative;
@@ -218,48 +257,65 @@ textarea {
   font-size: 14px;
 }
 
+/* =========================
+   BOTONES
+========================= */
+
 .form-actions {
   display: flex;
   justify-content: space-between;
   gap: 12px;
   margin-top: 35px;
   padding-top: 25px;
-  border-top: 1px solid #edf0f5;
+  border-top: 1px solid #fa8a0e;
 }
 
 .button {
-  border: none;
+  border: 1px solid #fa8a0e;
   border-radius: 8px;
   padding: 12px 24px;
   font-weight: 600;
   cursor: pointer;
   transition:
     background 0.2s,
-    transform 0.1s;
+    transform 0.1s,
+    border-color 0.2s;
 }
 
 .button:active {
   transform: translateY(1px);
 }
 
+/* Botón principal */
+
 .button.primary {
   margin-left: auto;
   background: #2563eb;
+  border-color: #2563eb;
   color: white;
 }
 
 .button.primary:hover {
   background: #1d4ed8;
+  border-color: #1d4ed8;
 }
 
+/* Botón volver */
+
 .button.secondary {
-  background: #eef1f6;
+  background: white;
+  border-color: #fa8a0e;
   color: #30394d;
 }
 
 .button.secondary:hover {
-  background: #e2e6ee;
+  background: #fff7ed;
+  border-color: #fa8a0e;
 }
+
+/* =========================
+   RESPONSIVE
+========================= */
 
 @media (max-width: 600px) {
   .page {
@@ -268,6 +324,12 @@ textarea {
 
   .form-container {
     padding: 25px 20px;
+  }
+
+  .form-banner {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 595 / 193;
   }
 
   .form-header h1 {
@@ -283,4 +345,3 @@ textarea {
     right: 35px;
   }
 }
-

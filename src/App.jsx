@@ -1,201 +1,217 @@
 import { useState } from "react";
 import "./App.css";
 
-const origins = [
-  "Santiago - Chile",
-  "Lima - Perú",
-  "Buenos Aires - Argentina",
-  "Sao Paulo - Brazil",
-  "Bogota - Colombia",
-  "Ciudad de Mexico - Mexico",
-  "Miami - USA",
-  "Los Angeles - USA",
-  "Nueva York - USA",
-  "Madrid - España",
-  "Frankfurt - Alemania",
-  "Shanghai - China",
+const origenes = [
+  "Valparaíso / Valparaíso - Chile",
+  "San Antonio / San Antonio - Chile",
+  "Lima / Callao - Perú",
+  "Buenos Aires / Puerto Madero - Argentina",
+  "Sao Paulo / Santos - Brazil",
+  "Bogota / Fontibón - Colombia",
+  "Ciudad de Mexico / Cuauhtémoc - Mexico",
+  "Miami / PortMiami - USA",
+  "Los Angeles / San Pedro - USA",
+  "Nueva York / Brooklyn - USA",
+  "Madrid / Coslada - España",
+  "Frankfurt / Osthafen - Alemania",
+  "Shanghai / Pudong - China",
+  "Ningbo / Beilun - China",
+  "Qingdao / Huangdao - China",
+  "Shenzhen / Yantian - China",
+  "Tianjin / Nuevo Distrito de Binhai - China",
+  "Busan / Gangseo-gu - Corea del Sur",
+  "Busan / Nam-gu - Corea del Sur",
+  "Tokio / Yokohama - Japón",
+  "Tokio / Ota - Japón",
+  "Ho Chi Minh / District 7 - Vietnam",
 ];
 
-const destinations = [
-  "Miami - USA",
-  "Los Angeles - USA",
-  "New York - USA",
-  "Madrid - España",
-  "Frankfurt - Alemania",
-  "Amsterdam - Países Bajos",
-  "Paris - Francia",
-  "Londres - Reino Unido",
-  "Shanghai - China",
-  "Hong Kong - China",
-  "Tokyo - Japón",
-  "Santiago - Chile",
+const destinos = [
+  "Valparaíso / Valparaíso - Chile",
+  "San Antonio / San Antonio - Chile",
 ];
 
-const cargoTypes = [
-  "General",
-  "Perecederos",
-  "Frágil",
-  "Peligrosa",
-  "Alto Valor",
-  "Otro",
-];
-
-const contactPreferences = ["Email", "Telefono", "WhatsApp"];
-
-const initialForm = {
+const formularioInicial = {
   origin: "",
   destination: "",
-  cargoType: "",
   weight: "",
   description: "",
-  fullName: "",
-  company: "",
-  email: "",
-  phone: "",
-  contactPreference: "",
 };
 
-function App() {
-  const [step, setStep] = useState(1);
-  const [form, setForm] = useState(initialForm);
-  const [errors, setErrors] = useState({});
+function App({ token }) {
+  const [paso, setPaso] = useState(1);
+  const [formulario, setFormulario] = useState(formularioInicial);
+  const [errores, setErrores] = useState({});
+  const [enviando, setEnviando] = useState(false);
 
-  const handleSubmit = async () => {
-  const res = await fetch('http://localhost:3000/api/cotizacion', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(form)
-  });
-  const data = await res.json();
-  console.log('📩 Respuesta cotización:', data);
-  alert(data.message || data.error);
-};
+  const manejarCambio = (evento) => {
+    const { name, value } = evento.target;
 
-
-  const handleChange = (event) => {
-    const { name, value } = event.target;
-
-    setForm((previous) => ({
-      ...previous,
+    setFormulario((anterior) => ({
+      ...anterior,
       [name]: value,
     }));
 
-    // Elimina el error del campo cuando el usuario lo corrige.
-    if (errors[name]) {
-      setErrors((previous) => ({
-        ...previous,
+    if (errores[name]) {
+      setErrores((anterior) => ({
+        ...anterior,
         [name]: "",
       }));
     }
   };
 
-  const validateStep = () => {
-    const newErrors = {};
+  const validarPaso = () => {
+    const nuevosErrores = {};
 
-    if (step === 1) {
-      if (!form.origin) {
-        newErrors.origin = "Selecciona un origen.";
+    if (paso === 1) {
+      if (!formulario.origin) {
+        nuevosErrores.origin = "Selecciona un origen.";
       }
 
-      if (!form.destination) {
-        newErrors.destination = "Selecciona un destino.";
-      }
-    }
-
-    if (step === 2) {
-      if (!form.cargoType) {
-        newErrors.cargoType = "Selecciona un tipo de carga.";
+      if (!formulario.destination) {
+        nuevosErrores.destination = "Selecciona un destino.";
       }
 
-      if (!form.weight || Number(form.weight) <= 0) {
-        newErrors.weight = "El peso debe ser mayor que 0.";
-      }
-
-      if (!form.description.trim()) {
-        newErrors.description = "Ingresa una descripción.";
+      if (
+        formulario.origin &&
+        formulario.origin === formulario.destination
+      ) {
+        nuevosErrores.destination =
+          "El origen y el destino deben ser diferentes.";
       }
     }
 
-    if (step === 3) {
-      if (!form.fullName.trim()) {
-        newErrors.fullName = "Ingresa tu nombre completo.";
+    if (paso === 2) {
+      if (
+        !formulario.weight ||
+        !Number.isFinite(Number(formulario.weight)) ||
+        Number(formulario.weight) <= 0
+      ) {
+        nuevosErrores.weight = "El peso debe ser mayor que 0.";
       }
 
-      if (!form.email.trim()) {
-        newErrors.email = "Ingresa tu email.";
-      } else if (!/^\S+@\S+\.\S+$/.test(form.email)) {
-        newErrors.email = "Ingresa un email válido.";
-      }
-
-      if (!form.phone || Number(form.phone) <= 0) {
-        newErrors.phone = "Ingresa un teléfono válido.";
-      }
-
-      if (!form.contactPreference) {
-        newErrors.contactPreference =
-          "Selecciona una preferencia de contacto.";
+      if (!formulario.description.trim()) {
+        nuevosErrores.description = "Ingresa una descripción.";
       }
     }
 
-    setErrors(newErrors);
+    setErrores(nuevosErrores);
 
-    return Object.keys(newErrors).length === 0;
+    return Object.keys(nuevosErrores).length === 0;
   };
 
-  const handleContinue = () => {
-    if (!validateStep()) {
+  const manejarContinuar = () => {
+    if (!validarPaso()) {
       return;
     }
 
-    setStep((previous) => Math.min(previous + 1, 3));
+    setErrores({});
+    setPaso(2);
   };
 
-  const handleBack = () => {
-    setErrors({});
-    setStep((previous) => Math.max(previous - 1, 1));
+  const manejarVolver = () => {
+    setErrores({});
+    setPaso(1);
   };
 
-    // Aquí posteriormente puedes enviar los datos a una API.
-    // Ejemplo:
-    //
-    // await fetch("/api/cotizacion", {
-    //   method: "POST",
-    //   headers: {
-    //     "Content-Type": "application/json",
-    //   },
-    //   body: JSON.stringify(form),
-    // });
+  const manejarEnvio = async (evento) => {
+    evento.preventDefault();
+
+    if (!validarPaso()) {
+    return;
+  }
+
+  if (!token) {
+    alert("Tu sesión no está activa. Inicia sesión nuevamente.");
+    return;
+  }
+
+    setEnviando(true);
+
+    console.log("Token recibido:", token);
+    console.log("Datos de cotización:", formulario);
+
+    try {
+      const respuesta = await fetch(
+        "http://localhost:3000/api/quotations",
+        {
+          method: "POST",
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify(formulario),
+        }
+      );
+
+      const data = await respuesta.json();
+
+      if (!respuesta.ok) {
+        throw new Error(
+          data.message || data.error || "No se pudo enviar la cotización."
+        );
+      }
+
+      console.log("Respuesta cotización:", data);
+
+      alert(data.message || "¡Cotización enviada correctamente!");
+
+      setFormulario(formularioInicial);
+      setErrores({});
+      setPaso(1);
+    } catch (error) {
+      console.error("Error al enviar la cotización:", error);
+
+      alert(
+        error.message ||
+          "No se pudo conectar con el servidor. Inténtalo nuevamente."
+      );
+    } finally {
+      setEnviando(false);
+    }
+  };
 
   return (
     <main className="page">
       <section className="form-container">
         <header className="form-header">
-          <h1>Cotiza tu Envio</h1>
+          {/* Si tienes un banner, puedes agregarlo aquí.
+              Por ejemplo:
+              <img
+                src="/banner.png"
+                alt="Cintac"
+                className="form-banner"
+              />
+              El archivo debe estar en la carpeta public.
+          */}
+
+          <h1>Cotiza tu Envío</h1>
 
           <div className="steps">
-            {[1, 2, 3].map((stepNumber) => (
+            {[1, 2].map((numeroPaso) => (
               <div
-                key={stepNumber}
+                key={numeroPaso}
                 className={`step ${
-                  stepNumber === step ? "active" : ""
-                } ${stepNumber < step ? "completed" : ""}`}
+                  numeroPaso === paso ? "active" : ""
+                } ${
+                  numeroPaso < paso ? "completed" : ""
+                }`}
               >
-                <span>{stepNumber}</span>
+                <span>{numeroPaso}</span>
+
                 <small>
-                  {stepNumber === 1 && "Ruta"}
-                  {stepNumber === 2 && "Carga"}
-                  {stepNumber === 3 && "Contacto"}
+                  {numeroPaso === 1 ? "Ruta" : "Carga"}
                 </small>
               </div>
             ))}
           </div>
         </header>
 
-        <form>
-          {/* PANTALLA 1 */}
-          {step === 1 && (
+        <form onSubmit={manejarEnvio}>
+          {paso === 1 && (
             <div className="form-step">
               <h2>Información del envío</h2>
+
               <p className="step-description">
                 Indica desde dónde y hacia dónde quieres realizar tu envío.
               </p>
@@ -208,21 +224,22 @@ function App() {
                 <select
                   id="origin"
                   name="origin"
-                  value={form.origin}
-                  onChange={handleChange}
-                  className={errors.origin ? "input-error" : ""}
+                  value={formulario.origin}
+                  onChange={manejarCambio}
+                  className={errores.origin ? "input-error" : ""}
+                  required
                 >
                   <option value="">Selecciona un origen</option>
 
-                  {origins.map((origin) => (
-                    <option key={origin} value={origin}>
-                      {origin}
+                  {origenes.map((origen) => (
+                    <option key={origen} value={origen}>
+                      {origen}
                     </option>
                   ))}
                 </select>
 
-                {errors.origin && (
-                  <span className="error">{errors.origin}</span>
+                {errores.origin && (
+                  <span className="error">{errores.origin}</span>
                 )}
               </div>
 
@@ -234,59 +251,38 @@ function App() {
                 <select
                   id="destination"
                   name="destination"
-                  value={form.destination}
-                  onChange={handleChange}
-                  className={errors.destination ? "input-error" : ""}
+                  value={formulario.destination}
+                  onChange={manejarCambio}
+                  className={
+                    errores.destination ? "input-error" : ""
+                  }
+                  required
                 >
                   <option value="">Selecciona un destino</option>
 
-                  {destinations.map((destination) => (
-                    <option key={destination} value={destination}>
-                      {destination}
+                  {destinos.map((destino) => (
+                    <option key={destino} value={destino}>
+                      {destino}
                     </option>
                   ))}
                 </select>
 
-                {errors.destination && (
-                  <span className="error">{errors.destination}</span>
+                {errores.destination && (
+                  <span className="error">
+                    {errores.destination}
+                  </span>
                 )}
               </div>
             </div>
           )}
 
-          {/* PANTALLA 2 */}
-          {step === 2 && (
+          {paso === 2 && (
             <div className="form-step">
               <h2>Información de la carga</h2>
+
               <p className="step-description">
                 Cuéntanos qué deseas enviar.
               </p>
-
-              <div className="field">
-                <label>
-                  Tipo de carga <span>*</span>
-                </label>
-
-                <div className="radio-group">
-                  {cargoTypes.map((type) => (
-                    <label className="radio-option" key={type}>
-                      <input
-                        type="radio"
-                        name="cargoType"
-                        value={type}
-                        checked={form.cargoType === type}
-                        onChange={handleChange}
-                      />
-
-                      <span>{type}</span>
-                    </label>
-                  ))}
-                </div>
-
-                {errors.cargoType && (
-                  <span className="error">{errors.cargoType}</span>
-                )}
-              </div>
 
               <div className="field">
                 <label htmlFor="weight">
@@ -300,17 +296,20 @@ function App() {
                     name="weight"
                     min="0.01"
                     step="0.01"
-                    value={form.weight}
-                    onChange={handleChange}
-                    className={errors.weight ? "input-error" : ""}
+                    value={formulario.weight}
+                    onChange={manejarCambio}
+                    className={
+                      errores.weight ? "input-error" : ""
+                    }
                     placeholder="Ej: 25"
+                    required
                   />
 
                   <span>kg</span>
                 </div>
 
-                {errors.weight && (
-                  <span className="error">{errors.weight}</span>
+                {errores.weight && (
+                  <span className="error">{errores.weight}</span>
                 )}
               </div>
 
@@ -323,128 +322,18 @@ function App() {
                   id="description"
                   name="description"
                   rows="5"
-                  value={form.description}
-                  onChange={handleChange}
-                  className={errors.description ? "input-error" : ""}
-                  placeholder="Describe brevemente la carga..."
+                  value={formulario.description}
+                  onChange={manejarCambio}
+                  className={
+                    errores.description ? "input-error" : ""
+                  }
+                  placeholder="Describe brevemente la carga."
+                  required
                 />
 
-                {errors.description && (
-                  <span className="error">{errors.description}</span>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* PANTALLA 3 */}
-          {step === 3 && (
-            <div className="form-step">
-              <h2>Datos de contacto</h2>
-              <p className="step-description">
-                Déjanos tus datos para poder contactarte.
-              </p>
-
-              <div className="field">
-                <label htmlFor="fullName">
-                  Nombre completo <span>*</span>
-                </label>
-
-                <input
-                  id="fullName"
-                  type="text"
-                  name="fullName"
-                  value={form.fullName}
-                  onChange={handleChange}
-                  className={errors.fullName ? "input-error" : ""}
-                  placeholder="Tu nombre completo"
-                />
-
-                {errors.fullName && (
-                  <span className="error">{errors.fullName}</span>
-                )}
-              </div>
-
-              <div className="field">
-                <label htmlFor="company">Empresa</label>
-
-                <input
-                  id="company"
-                  type="text"
-                  name="company"
-                  value={form.company}
-                  onChange={handleChange}
-                  placeholder="Nombre de tu empresa"
-                />
-              </div>
-
-              <div className="field">
-                <label htmlFor="email">
-                  Email <span>*</span>
-                </label>
-
-                <input
-                  id="email"
-                  type="email"
-                  name="email"
-                  value={form.email}
-                  onChange={handleChange}
-                  className={errors.email ? "input-error" : ""}
-                  placeholder="correo@ejemplo.com"
-                />
-
-                {errors.email && (
-                  <span className="error">{errors.email}</span>
-                )}
-              </div>
-
-              <div className="field">
-                <label htmlFor="phone">
-                  Teléfono / Whatsapp <span>*</span>
-                </label>
-
-                <input
-                  id="phone"
-                  type="number"
-                  name="phone"
-                  min="1"
-                  step="1"
-                  value={form.phone}
-                  onChange={handleChange}
-                  className={errors.phone ? "input-error" : ""}
-                  placeholder="Ej: 56912345678"
-                />
-
-                {errors.phone && (
-                  <span className="error">{errors.phone}</span>
-                )}
-              </div>
-
-              <div className="field">
-                <label>
-                  Preferencia de contacto <span>*</span>
-                </label>
-
-                <div className="radio-group horizontal">
-                  {contactPreferences.map((preference) => (
-                    <label className="radio-option" key={preference}>
-                      <input
-                        type="radio"
-                        name="contactPreference"
-                        value={preference}
-                        checked={
-                          form.contactPreference === preference
-                        }
-                        onChange={handleChange}
-                      />
-
-                      <span>{preference}</span>
-                    </label>
-                  ))}
-                </div>
-
-                {errors.contactPreference && (
+                {errores.description && (
                   <span className="error">
-                    {errors.contactPreference}
+                    {errores.description}
                   </span>
                 )}
               </div>
@@ -452,28 +341,33 @@ function App() {
           )}
 
           <div className="form-actions">
-            {step > 1 && (
+            {paso > 1 && (
               <button
                 type="button"
                 className="button secondary"
-                onClick={handleBack}
+                onClick={manejarVolver}
+                disabled={enviando}
               >
                 Volver
               </button>
             )}
 
-            {step < 3 ? (
+            {paso === 1 ? (
               <button
                 type="button"
                 className="button primary"
-                onClick={handleContinue}
+                onClick={manejarContinuar}
               >
                 Continuar
               </button>
             ) : (
-              <button type="button" className="button primary" onClick={handleSubmit}>
-                Finalizar
-                </button>
+              <button
+                type="submit"
+                className="button primary"
+                disabled={enviando}
+              >
+                {enviando ? "Enviando..." : "Finalizar"}
+              </button>
             )}
           </div>
         </form>

@@ -1,43 +1,70 @@
 import express from 'express';
 import Quotation from '../models/Quotation.js';
+import authMiddleware from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// Crear cotización
-router.post('/', async (req, res) => {
+// Crear cotización: requiere autenticación
+router.post('/', authMiddleware, async (req, res) => {
   try {
-    const data = req.body;
+    const { origin, destination, weight, description } = req.body;
 
-    // Ejemplo de cálculo simple (puedes ajustar según reglas de negocio)
-    const baseRateUSD = 1000; // tarifa base ficticia
-    const totalCostUSD = baseRateUSD + Number(data.weight) * 10;
-    const totalCostCLP = totalCostUSD * 950; // conversión ficticia
+    if (
+      !origin ||
+      !destination ||
+      !description?.trim() ||
+      !Number.isFinite(Number(weight)) ||
+      Number(weight) <= 0
+    ) {
+      return res.status(400).json({
+        error: 'Los datos de la cotización no son válidos'
+      });
+    }
+
+    const baseRateUSD = 1000;
+    const totalCostUSD = baseRateUSD + Number(weight) * 10;
+    const totalCostCLP = totalCostUSD * 950;
     const ivaCLP = totalCostCLP * 0.19;
 
     const quotation = new Quotation({
-      ...data,
-      totalCostUSD,
-      totalCostCLP,
+      userId: req.user.userId,
+      origin,
+      destination,
+      weight: Number(weight),
+      description: description.trim(),
+      cost: totalCostCLP,
       ivaCLP
     });
 
     await quotation.save();
-    console.log('✅ Cotización guardada:', quotation);
 
-    res.json({ message: 'Cotización creada correctamente', quotation });
+    res.status(201).json({
+      message: 'Cotización creada correctamente',
+      quotation
+    });
   } catch (error) {
-    console.error('❌ Error al crear cotización:', error);
-    res.status(400).json({ error: 'Error al crear cotización' });
+    console.error('Error al crear cotización:', error);
+
+    res.status(500).json({
+      error: 'Error al crear cotización'
+    });
   }
 });
 
-// Listar todas las cotizaciones
-router.get('/', async (req, res) => {
+// Listar cotizaciones del usuario autenticado
+router.get('/', authMiddleware, async (req, res) => {
   try {
-    const quotations = await Quotation.find().sort({ createdAt: -1 });
+    const quotations = await Quotation.find({
+      userId: req.user.userId
+    }).sort({ createdAt: -1 });
+
     res.json(quotations);
   } catch (error) {
-    res.status(500).json({ error: 'Error al obtener cotizaciones' });
+    console.error('Error al obtener cotizaciones:', error);
+
+    res.status(500).json({
+      error: 'Error al obtener cotizaciones'
+    });
   }
 });
 
