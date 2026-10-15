@@ -15,10 +15,20 @@ const quotationSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  days: {
+    type: Number,
+    required: true
+  },
   weight: {
     type: Number,
     required: true,
-    min: 0.01
+    min: 0.00001
+  },
+  contenedores: {
+    type: Number,
+    required: true,
+    min: 1,
+    default: 1
   },
   description: {
     type: String,

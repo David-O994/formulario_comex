@@ -2,28 +2,27 @@ import { useState } from "react";
 import "./App.css";
 
 const origenes = [
-  "Valparaíso / Valparaíso - Chile",
-  "San Antonio / San Antonio - Chile",
-  "Lima / Callao - Perú",
-  "Buenos Aires / Puerto Madero - Argentina",
-  "Sao Paulo / Santos - Brazil",
-  "Bogota / Fontibón - Colombia",
-  "Ciudad de Mexico / Cuauhtémoc - Mexico",
-  "Miami / PortMiami - USA",
-  "Los Angeles / San Pedro - USA",
-  "Nueva York / Brooklyn - USA",
-  "Madrid / Coslada - España",
-  "Frankfurt / Osthafen - Alemania",
-  "Shanghai / Pudong - China",
-  "Ningbo / Beilun - China",
-  "Qingdao / Huangdao - China",
-  "Shenzhen / Yantian - China",
-  "Tianjin / Nuevo Distrito de Binhai - China",
-  "Busan / Gangseo-gu - Corea del Sur",
-  "Busan / Nam-gu - Corea del Sur",
-  "Tokio / Yokohama - Japón",
-  "Tokio / Ota - Japón",
-  "Ho Chi Minh / District 7 - Vietnam",
+  { nombre: "Valparaíso / Valparaíso - Chile", dias: 0 },
+  { nombre: "San Antonio / San Antonio - Chile", dias: 0 },
+  { nombre: "Lima / Callao - Perú", dias: 7 },
+  { nombre: "Buenos Aires / Puerto Madero - Argentina", dias: 10 },
+  { nombre: "Sao Paulo / Santos - Brazil", dias: 12 },
+  { nombre: "Bogota / Fontibón - Colombia", dias: 14 },
+  { nombre: "Ciudad de Mexico / Cuauhtémoc - Mexico", dias: 22 },
+  { nombre: "Miami / PortMiami - USA", dias: 20 },
+  { nombre: "Los Angeles / San Pedro - USA", dias: 18 },
+  { nombre: "Nueva York / Brooklyn - USA", dias: 25 },
+  { nombre: "Madrid / Coslada - España", dias: 32 },
+  { nombre: "Frankfurt / Osthafen - Alemania", dias: 32 },
+  { nombre: "Shanghai / Pudong - China", dias: 26 },
+  { nombre: "Ningbo / Beilun - China", dias: 27 },
+  { nombre: "Qingdao / Huangdao - China", dias: 29 },
+  { nombre: "Shenzhen / Yantian - China", dias: 28 },
+  { nombre: "Tianjin / Nuevo Distrito de Binhai - China", dias: 31 },
+  { nombre: "Busan / Nam-gu - Corea del Sur", dias: 31 },
+  { nombre: "Tokio / Yokohama - Japón", dias: 33 },
+  { nombre: "Ho Chi Minh / District 7 - Vietnam", dias: 36 },
+  { nombre: "Tuas / Tuas Port - Singapur", dias: 34 },
 ];
 
 const destinos = [
@@ -43,6 +42,13 @@ function App({ token }) {
   const [formulario, setFormulario] = useState(formularioInicial);
   const [errores, setErrores] = useState({});
   const [enviando, setEnviando] = useState(false);
+
+  // Obtiene los días asociados al origen seleccionado.
+  const origenSeleccionado = origenes.find(
+    (origen) => origen.nombre === formulario.origin
+  );
+
+  const diasSeleccionados = origenSeleccionado?.dias;
 
   const manejarCambio = (evento) => {
     const { name, value } = evento.target;
@@ -118,18 +124,28 @@ function App({ token }) {
     evento.preventDefault();
 
     if (!validarPaso()) {
-    return;
-  }
+      return;
+    }
 
-  if (!token) {
-    alert("Tu sesión no está activa. Inicia sesión nuevamente.");
-    return;
-  }
+    if (!token) {
+      alert("Tu sesión no está activa. Inicia sesión nuevamente.");
+      return;
+    }
+
+    if (diasSeleccionados === undefined) {
+      alert("No se pudieron determinar los días de tránsito.");
+      return;
+    }
 
     setEnviando(true);
 
-    console.log("Token recibido:", token);
-    console.log("Datos de cotización:", formulario);
+    // Se envía "days" junto con los datos del formulario.
+    const datosCotizacion = {
+      ...formulario,
+      days: diasSeleccionados,
+    };
+
+    console.log("Datos de cotización:", datosCotizacion);
 
     try {
       const respuesta = await fetch(
@@ -137,10 +153,10 @@ function App({ token }) {
         {
           method: "POST",
           headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(formulario),
+          body: JSON.stringify(datosCotizacion),
         }
       );
 
@@ -148,7 +164,9 @@ function App({ token }) {
 
       if (!respuesta.ok) {
         throw new Error(
-          data.message || data.error || "No se pudo enviar la cotización."
+          data.message ||
+            data.error ||
+            "No se pudo enviar la cotización."
         );
       }
 
@@ -175,16 +193,6 @@ function App({ token }) {
     <main className="page">
       <section className="form-container">
         <header className="form-header">
-          {/* Si tienes un banner, puedes agregarlo aquí.
-              Por ejemplo:
-              <img
-                src="/banner.png"
-                alt="Cintac"
-                className="form-banner"
-              />
-              El archivo debe estar en la carpeta public.
-          */}
-
           <h1>Cotiza tu Envío</h1>
 
           <div className="steps">
@@ -198,7 +206,6 @@ function App({ token }) {
                 }`}
               >
                 <span>{numeroPaso}</span>
-
                 <small>
                   {numeroPaso === 1 ? "Ruta" : "Carga"}
                 </small>
@@ -232,8 +239,11 @@ function App({ token }) {
                   <option value="">Selecciona un origen</option>
 
                   {origenes.map((origen) => (
-                    <option key={origen} value={origen}>
-                      {origen}
+                    <option
+                      key={origen.nombre}
+                      value={origen.nombre}
+                    >
+                      {origen.nombre}
                     </option>
                   ))}
                 </select>
@@ -266,6 +276,13 @@ function App({ token }) {
                     </option>
                   ))}
                 </select>
+
+                {/* Los días aparecen debajo del selector de destino. */}
+                {origenSeleccionado && (
+                  <p className="transit-days">
+                    Días en tránsito: {diasSeleccionados}
+                  </p>
+                )}
 
                 {errores.destination && (
                   <span className="error">

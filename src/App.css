@@ -197,6 +197,13 @@ textarea {
   color: #dc2626;
 }
 
+.transit-days {
+  margin-top: 8px;
+  margin-bottom: 0;
+  font-size: 0.9rem;
+  color: #555;
+}
+
 /* =========================
    RADIO
 ========================= */

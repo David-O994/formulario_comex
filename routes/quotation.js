@@ -7,22 +7,49 @@ const router = express.Router();
 // Crear cotización: requiere autenticación
 router.post('/', authMiddleware, async (req, res) => {
   try {
-    const { origin, destination, weight, description } = req.body;
+    const {
+      origin,
+      destination,
+      days,
+      weight,
+      description
+    } = req.body;
+
+    const pesoKg = Number(weight);
 
     if (
       !origin ||
       !destination ||
       !description?.trim() ||
-      !Number.isFinite(Number(weight)) ||
-      Number(weight) <= 0
+      weight === undefined ||
+      weight === null ||
+      weight === '' ||
+      !Number.isFinite(pesoKg) ||
+      pesoKg <= 0 ||
+      days === undefined ||
+      days === null ||
+      days === '' ||
+      !Number.isInteger(Number(days)) ||
+      Number(days) < 0
     ) {
       return res.status(400).json({
         error: 'Los datos de la cotización no son válidos'
       });
     }
 
+    // Convertir el peso ingresado de kg a toneladas.
+    const pesoToneladas = pesoKg / 1000;
+
+    // Calcular los contenedores: máximo 25 toneladas por contenedor.
+    // Siempre se utiliza al menos un contenedor.
+    const contenedores = Math.max(
+      1,
+      Math.ceil(pesoToneladas / 25)
+    );
+
+    // Mantener el cálculo de costos actual basado en el peso en kg.
     const baseRateUSD = 1000;
-    const totalCostUSD = baseRateUSD + Number(weight) * 10;
+    const totalCostUSD = baseRateUSD + pesoKg * 10;
     const totalCostCLP = totalCostUSD * 950;
     const ivaCLP = totalCostCLP * 0.19;
 
@@ -30,7 +57,9 @@ router.post('/', authMiddleware, async (req, res) => {
       userId: req.user.userId,
       origin,
       destination,
-      weight: Number(weight),
+      days: Number(days),
+      weight: pesoToneladas,
+      contenedores,
       description: description.trim(),
       cost: totalCostCLP,
       ivaCLP
