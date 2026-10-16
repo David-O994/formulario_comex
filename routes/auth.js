@@ -45,6 +45,15 @@ router.post(
 
       const nombreUsuario = username.trim();
 
+      const passwordRegex = /^(?=.*\d)(?=.*[^A-Za-z0-9\s])\S{8,}$/;
+
+      if (!passwordRegex.test(password)) {
+        return res.status(400).json({
+          error:
+          "La contraseña debe tener al menos 8 caracteres, un número y un carácter especial."
+        });
+      }
+
       const usuarioExistente = await User.findOne({
         username: nombreUsuario
       });
