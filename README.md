@@ -35,12 +35,14 @@
 
 ## Configurar el entorno
 
-- Crea un archivo llamado .env en la raíz del proyecto. Añade la siguiente variable
-  ```JWT_SECRET = PEGA_EL_CODIGO_SECRETO
-  ```
+- Crea un archivo llamado .env en la raíz del proyecto. Añade la siguiente variable:
+
+  JWT_SECRET = PEGA_EL_CODIGO_SECRETO
+  
 - Para generar el código, ejecuta lo siguiente en una terminal con node.js instalado
-  ```node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
-  ```
+
+  node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
+  
 ## Configurar MongoDB
 
 - Inicia el servicio de MongoDB.
@@ -50,12 +52,12 @@
 
 ### Crear el Admin
 
-El registro de usuarios está protegido: únicamente un administrador autenticado puede crear nuevas cuentas desde la aplicación. Por ello, para el primer inicio es necesario crear manualmente el administrador en MongoDB Compass o mediante un procedimiento de inicialización controlado.
+El registro de usuarios está protegido: únicamente un administrador autenticado puede crear nuevas cuentas desde la aplicación. Por ello, para el primer inicio es necesario crear manualmente el administrador en MongoDB Compass.
 
 Desde la raíz del proyecto, ejecuta:
 
-```node --input-type=module -e "import bcrypt from 'bcrypt'; console.log(await bcrypt.hash('CAMBIA_ESTA_CONTRASEÑA', 10));"
-```
+node --input-type=module -e "import bcrypt from 'bcrypt'; console.log(await bcrypt.hash('CAMBIA_ESTA_CONTRASEÑA', 10));"
+
 Sustituye CAMBIA_ESTA_CONTRASEÑA por una contraseña fuerte y única.
 
 Copia el hash generado.
@@ -74,9 +76,9 @@ Reemplaza PEGA_AQUI_EL_HASH_BCRYPT por el hash generado anteriormente.
 
 Los campos deben respetar el modelo User:
 
-username: nombre de usuario único.
-password: hash bcrypt de la contraseña.
-role: admin para el administrador inicial o usuario para las cuentas normales.
+- username: nombre de usuario único.
+- password: hash bcrypt de la contraseña.
+- role: admin para el administrador inicial o usuario para las cuentas normales.
 
 ## ▶️ Ejecución
 
