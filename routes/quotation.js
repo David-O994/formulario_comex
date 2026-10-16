@@ -4,7 +4,18 @@ import authMiddleware from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// Crear cotización: requiere autenticación
+// Autorizar exclusivamente al administrador.
+function adminMiddleware(req, res, next) {
+  if (req.user?.role !== 'admin') {
+    return res.status(403).json({
+      error: 'No tienes permisos para consultar todas las cotizaciones'
+    });
+  }
+
+  next();
+}
+
+// Crear cotización: requiere autenticación.
 router.post('/', authMiddleware, async (req, res) => {
   try {
     const {
@@ -18,9 +29,12 @@ router.post('/', authMiddleware, async (req, res) => {
     const pesoKg = Number(weight);
 
     if (
-      !origin ||
-      !destination ||
-      !description?.trim() ||
+      typeof origin !== 'string' ||
+      !origin.trim() ||
+      typeof destination !== 'string' ||
+      !destination.trim() ||
+      typeof description !== 'string' ||
+      !description.trim() ||
       weight === undefined ||
       weight === null ||
       weight === '' ||
@@ -37,17 +51,16 @@ router.post('/', authMiddleware, async (req, res) => {
       });
     }
 
-    // Convertir el peso ingresado de kg a toneladas.
+    // Convertir kg a toneladas.
     const pesoToneladas = pesoKg / 1000;
 
-    // Calcular los contenedores: máximo 25 toneladas por contenedor.
-    // Siempre se utiliza al menos un contenedor.
+    // Un contenedor por cada 25 toneladas, mínimo uno.
     const contenedores = Math.max(
       1,
       Math.ceil(pesoToneladas / 25)
     );
 
-    // Mantener el cálculo de costos actual basado en el peso en kg.
+    // Mantener el cálculo actual de costos.
     const baseRateUSD = 1000;
     const totalCostUSD = baseRateUSD + pesoKg * 10;
     const totalCostCLP = totalCostUSD * 950;
@@ -55,8 +68,8 @@ router.post('/', authMiddleware, async (req, res) => {
 
     const quotation = new Quotation({
       userId: req.user.userId,
-      origin,
-      destination,
+      origin: origin.trim(),
+      destination: destination.trim(),
       days: Number(days),
       weight: pesoToneladas,
       contenedores,
@@ -67,31 +80,54 @@ router.post('/', authMiddleware, async (req, res) => {
 
     await quotation.save();
 
-    res.status(201).json({
+    return res.status(201).json({
       message: 'Cotización creada correctamente',
       quotation
     });
   } catch (error) {
     console.error('Error al crear cotización:', error);
 
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Error al crear cotización'
     });
   }
 });
 
-// Listar cotizaciones del usuario autenticado
+// Historial global: solo administrador.
+// Debe declararse antes de la ruta GET '/'.
+router.get(
+  '/admin/all',
+  authMiddleware,
+  adminMiddleware,
+  async (req, res) => {
+    try {
+      const quotations = await Quotation.find({})
+        .populate('userId', 'username')
+        .sort({ createdAt: -1 });
+
+      return res.json(quotations);
+    } catch (error) {
+      console.error('Error al obtener el historial global:', error);
+
+      return res.status(500).json({
+        error: 'Error al obtener el historial de cotizaciones'
+      });
+    }
+  }
+);
+
+// Listar únicamente las cotizaciones del usuario autenticado.
 router.get('/', authMiddleware, async (req, res) => {
   try {
     const quotations = await Quotation.find({
       userId: req.user.userId
     }).sort({ createdAt: -1 });
 
-    res.json(quotations);
+    return res.json(quotations);
   } catch (error) {
     console.error('Error al obtener cotizaciones:', error);
 
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Error al obtener cotizaciones'
     });
   }

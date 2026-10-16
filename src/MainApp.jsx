@@ -2,10 +2,13 @@ import { useState, useEffect } from "react";
 import Login from "./Login";
 import Register from "./Register";
 import App from "./App";
+import "./MainApp.css";
 
 function MainApp() {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
+  const [vista, setVista] = useState("dashboard");
+
   const [quotations, setQuotations] = useState([]);
   const [loadingQuotations, setLoadingQuotations] = useState(false);
 
@@ -31,30 +34,29 @@ function MainApp() {
       }
 
       if (!data.token || !data.user) {
-        alert(
-          "El servidor no devolvió los datos de autenticación esperados."
-        );
+        alert("El servidor no devolvió los datos de autenticación esperados.");
         return;
       }
 
       setToken(data.token);
       setUser(data.user);
       setQuotations([]);
+      setVista("dashboard");
     } catch (error) {
       console.error("Error al iniciar sesión:", error);
       alert("No se pudo conectar con el servidor.");
     }
   };
 
-  // Registro público: el backend asigna el rol de usuario.
+  // Registro de usuario
   const handleRegister = async (username, password) => {
     try {
       const res = await fetch(
-        "http://localhost:3000/api/auth/register",
-        {
+        "http://localhost:3000/api/auth/register",{
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ username, password }),
         }
@@ -62,32 +64,34 @@ function MainApp() {
 
       const data = await res.json();
 
-      if (res.ok) {
-        alert(
-          "Usuario creado correctamente. Ya puedes iniciar sesión."
-        );
-      } else {
+      if (!res.ok) {
         alert(data.error || "No se pudo crear el usuario.");
+        return;
       }
+
+      alert("Usuario creado correctamente.");
+
+      setVista("dashboard");
     } catch (error) {
       console.error("Error al registrar usuario:", error);
       alert("No se pudo conectar con el servidor.");
     }
   };
 
-  // Cargar cotizaciones del usuario autenticado.
+  // Cargar cotizaciones para el historial del administrador.
   useEffect(() => {
-    if (!user || !token) {
-      setQuotations([]);
+    if (!user || !token || user.role !== "admin" || vista !== "historial") {
       return;
     }
+
+    let cancelado = false;
 
     const cargarCotizaciones = async () => {
       setLoadingQuotations(true);
 
       try {
         const res = await fetch(
-          "http://localhost:3000/api/quotations",
+          "http://localhost:3000/api/quotations/admin/all",
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -101,135 +105,292 @@ function MainApp() {
           setUser(null);
           setToken(null);
           setQuotations([]);
+          setVista("dashboard");
 
-          alert(
-            "Tu sesión ha expirado. Inicia sesión nuevamente."
-          );
+          alert("Tu sesión ha expirado. Inicia sesión nuevamente.");
           return;
         }
 
         if (!res.ok) {
           throw new Error(
-            data.error ||
-              "No se pudieron cargar las cotizaciones."
+            data.error || "No se pudieron cargar las cotizaciones."
           );
         }
 
-        setQuotations(Array.isArray(data) ? data : []);
+        if (!cancelado) {
+          setQuotations(Array.isArray(data) ? data : []);
+        }
       } catch (error) {
-        console.error(
-          "Error cargando cotizaciones:",
-          error
-        );
+        if (!cancelado) {
+          console.error("Error cargando cotizaciones:", error);
+          alert(error.message || "No se pudieron cargar las cotizaciones.");
+        }
       } finally {
-        setLoadingQuotations(false);
+        if (!cancelado) {
+          setLoadingQuotations(false);
+        }
       }
     };
 
     cargarCotizaciones();
-  }, [user, token]);
 
-  // Cierre de sesión
+    return () => {
+      cancelado = true;
+    };
+  }, [user, token, vista]);
+
+  // Cerrar sesión y volver al dashboard público.
   const handleLogout = () => {
     setUser(null);
     setToken(null);
     setQuotations([]);
+    setVista("dashboard");
   };
 
-  // Mostrar inicio de sesión y registro si no hay sesión activa.
-  if (!user || !token) {
-    return (
-      <div>
-        <h1>Bienvenido</h1>
+  const volverAlDashboard = () => {
+    setVista("dashboard");
+  };
 
-        <Login onLogin={handleLogin} />
-        <Register onRegister={handleRegister} />
-      </div>
+  const esAdmin = user?.role === "admin";
+  const esUsuario = Boolean(
+    user && token && user.role === "usuario"
     );
-  }
+  const estaAutenticado = Boolean(user && token);
 
   return (
-    <div>
-      <header>
-        <h2>
-          Hola {user.username} ({user.role})
-        </h2>
-
+    <main className="dashboard-page">
+      <header className="dashboard-header">
         <button
           type="button"
-          onClick={handleLogout}
+          className="brand-button"
+          onClick={volverAlDashboard}
         >
-          Cerrar sesión
+          Inicio
         </button>
+
+        <div className="header-actions">
+          {estaAutenticado && (
+            <>
+              <span className="user-greeting">
+                Hola, {user.username}
+              </span>
+
+              <button
+                type="button"
+                className="button-logout"
+                onClick={handleLogout}
+              >
+                Cerrar sesión
+              </button>
+            </>
+          )}
+        </div>
       </header>
 
-      <App token={token} />
+      <div className="dashboard-content">
+        {vista === "dashboard" && (
+          <>
+            <section className="dashboard-intro">
+              <p className="dashboard-eyebrow">PANEL PRINCIPAL</p>
 
-      {user.role === "admin" && (
-        <section>
-          <h2>Informe de cotizaciones propias</h2>
+              <h1>
+                {estaAutenticado
+                  ? `Bienvenido, ${user.username}`
+                  : "Bienvenido"}
+              </h1>
 
-          {loadingQuotations && (
-            <p>Cargando cotizaciones...</p>
-          )}
+              <p>
+                {esAdmin
+                  ? "Administra los usuarios y consulta las cotizaciones."
+                  : esUsuario
+                    ? "Gestiona tus envíos y crea nuevas cotizaciones."
+                    : "Inicia sesión para acceder a las opciones disponibles."}
+              </p>
+            </section>
 
-          {!loadingQuotations &&
-            quotations.length === 0 && (
+            <section className="dashboard-cards">
+              {!estaAutenticado && (
+                <button
+                  type="button"
+                  className="dashboard-card"
+                  onClick={() => setVista("login")}
+                >
+                  <span className="dashboard-card-icon">↪</span>
+                  <h2>Iniciar sesión</h2>
+                  <p>Accede a tu cuenta para continuar.</p>
+                  <span className="dashboard-card-link">
+                    Ingresar →
+                  </span>
+                </button>
+              )}
+
+              {esAdmin && (
+                <>
+                  <button
+                    type="button"
+                    className="dashboard-card"
+                    onClick={() => setVista("crear-usuario")}
+                  >
+                    <span className="dashboard-card-icon">＋</span>
+                    <h2>Crear usuario</h2>
+                    <p>Registra una nueva cuenta de usuario.</p>
+                    <span className="dashboard-card-link">
+                      Crear usuario →
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="dashboard-card"
+                    onClick={() => setVista("historial")}
+                  >
+                    <span className="dashboard-card-icon">▤</span>
+                    <h2>Historial de cotizaciones</h2>
+                    <p>Consulta las cotizaciones disponibles.</p>
+                    <span className="dashboard-card-link">
+                      Ver historial →
+                    </span>
+                  </button>
+                </>
+              )}
+
+              {esUsuario && (
+                <button
+                  type="button"
+                  className="dashboard-card"
+                  onClick={() => setVista("crear-cotizacion")}
+                >
+                  <span className="dashboard-card-icon">＋</span>
+                  <h2>Crear cotización</h2>
+                  <p>Completa los datos de tu próximo envío.</p>
+                  <span className="dashboard-card-link">
+                    Crear cotización →
+                  </span>
+                </button>
+              )}
+            </section>
+          </>
+        )}
+
+        {vista === "login" && (
+          <section className="dashboard-panel">
+            <button
+              type="button"
+              className="button-back"
+              onClick={volverAlDashboard}
+            >
+              ← Volver al inicio
+            </button>
+
+            <Login onLogin={handleLogin} />
+          </section>
+        )}
+
+        {vista === "crear-usuario" && esAdmin && (
+          <section className="dashboard-panel">
+            <button
+              type="button"
+              className="button-back"
+              onClick={volverAlDashboard}
+            >
+              ← Volver al dashboard
+            </button>
+
+            <Register onRegister={handleRegister} />
+          </section>
+        )}
+
+        {vista === "crear-cotizacion" && esUsuario && (
+          <section className="dashboard-panel">
+            <button
+              type="button"
+              className="button-back"
+              onClick={volverAlDashboard}
+            >
+              ← Volver al dashboard
+            </button>
+
+            <App token={token} />
+          </section>
+        )}
+
+        {vista === "historial" && esAdmin && (
+          <section className="dashboard-panel history-panel">
+            <button
+              type="button"
+              className="button-back"
+              onClick={volverAlDashboard}
+            >
+              ← Volver al dashboard
+            </button>
+
+            <h1>Historial de cotizaciones</h1>
+
+            {loadingQuotations && (
+              <p>Cargando cotizaciones...</p>
+            )}
+
+            {!loadingQuotations && quotations.length === 0 && (
               <p>No hay cotizaciones para mostrar.</p>
             )}
 
-          {quotations.length > 0 && (
-            <table>
-              <thead>
-                <tr>
-                  <th>Origen</th>
-                  <th>Destino</th>
-                  <th>Descripción</th>
-                  <th>Peso</th>
-                  <th>Costo CLP</th>
-                  <th>IVA CLP</th>
-                  <th>Total CLP</th>
-                  <th>Fecha</th>
-                </tr>
-              </thead>
+            {!loadingQuotations && quotations.length > 0 && (
+              <div className="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Origen</th>
+                      <th>Destino</th>
+                      <th>Días</th>
+                      <th>Peso (toneladas)</th>
+                      <th>Contenedores</th>
+                      <th>Descripción</th>
+                      <th>Costo CLP</th>
+                      <th>IVA CLP</th>
+                      <th>Total CLP</th>
+                      <th>Fecha</th>
+                      <th>Usuario</th>
+                    </tr>
+                  </thead>
 
-              <tbody>
-                {quotations.map((q) => (
-                  <tr key={q._id}>
-                    <td>{q.origin}</td>
-                    <td>{q.destination}</td>
-                    <td>{q.description}</td>
-                    <td>{q.weight} kg</td>
-
-                    <td>
-                      {Number(q.cost).toLocaleString("es-CL")}
-                    </td>
-
-                    <td>
-                      {Number(q.ivaCLP).toLocaleString("es-CL")}
-                    </td>
-
-                    <td>
-                      {(
-                        Number(q.cost) + Number(q.ivaCLP)
-                      ).toLocaleString("es-CL")}
-                    </td>
-
-                    <td>
-                      {q.createdAt
-                        ? new Date(
-                            q.createdAt
-                          ).toLocaleDateString("es-CL")
-                        : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </section>
-      )}
-    </div>
+                  <tbody>
+                    {quotations.map((q) => (
+                      <tr key={q._id}>
+                        <td>{q.origin}</td>
+                        <td>{q.destination}</td>
+                        <td>{q.days ?? "—"}</td>
+                        <td>{q.weight}</td>
+                        <td>{q.contenedores ?? "—"}</td>
+                        <td>{q.description}</td>
+                        <td>
+                          {Number(q.cost).toLocaleString("es-CL")}
+                        </td>
+                        <td>
+                          {Number(q.ivaCLP).toLocaleString("es-CL")}
+                        </td>
+                        <td>
+                          {(
+                            Number(q.cost) + Number(q.ivaCLP)
+                          ).toLocaleString("es-CL")}
+                        </td>
+                        <td>
+                          {q.createdAt
+                            ? new Date(q.createdAt).toLocaleDateString(
+                                "es-CL"
+                              )
+                            : "—"}
+                        </td>
+                        <td>{q.userId?.username ?? "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        )}
+      </div>
+    </main>
   );
 }
 

@@ -2,6 +2,7 @@ import express from 'express';
 import User from '../models/User.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import authMiddleware from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -11,45 +12,100 @@ if (!JWT_SECRET) {
   throw new Error('Falta configurar JWT_SECRET en el archivo .env');
 }
 
-// Registro
-router.post('/register', async (req, res) => {
-  const { username, password } = req.body;
+// Autorizar exclusivamente al administrador.
+function adminMiddleware(req, res, next) {
+  if (req.user?.role !== 'admin') {
+    return res.status(403).json({
+      error: 'No tienes permisos para realizar esta acción'
+    });
+  }
 
+  next();
+}
+
+// Crear usuarios: solo el administrador autenticado.
+router.post(
+  '/register',
+  authMiddleware,
+  adminMiddleware,
+  async (req, res) => {
+    try {
+      const { username, password } = req.body;
+
+      if (
+        typeof username !== 'string' ||
+        !username.trim() ||
+        typeof password !== 'string' ||
+        !password
+      ) {
+        return res.status(400).json({
+          error: 'Usuario y contraseña son obligatorios'
+        });
+      }
+
+      const nombreUsuario = username.trim();
+
+      const usuarioExistente = await User.findOne({
+        username: nombreUsuario
+      });
+
+      if (usuarioExistente) {
+        return res.status(409).json({
+          error: 'Ese nombre de usuario ya existe'
+        });
+      }
+
+      const user = new User({
+        username: nombreUsuario,
+        password,
+        role: 'usuario'
+      });
+
+      await user.save();
+
+      return res.status(201).json({
+        message: 'Usuario creado correctamente',
+        user: {
+          id: user._id,
+          username: user.username,
+          role: user.role
+        }
+      });
+    } catch (error) {
+      console.error('Error al registrar usuario:', error);
+
+      if (error.code === 11000) {
+        return res.status(409).json({
+          error: 'Ese nombre de usuario ya existe'
+        });
+      }
+
+      return res.status(500).json({
+        error: 'No se pudo crear el usuario'
+      });
+    }
+  }
+);
+
+// Inicio de sesión.
+router.post('/login', async (req, res) => {
   try {
-    if (!username || !password) {
+    const { username, password } = req.body;
+
+    if (
+      typeof username !== 'string' ||
+      typeof password !== 'string' ||
+      !username ||
+      !password
+    ) {
       return res.status(400).json({
         error: 'Usuario y contraseña son obligatorios'
       });
     }
 
-    // Los usuarios registrados públicamente no pueden asignarse
-    // privilegios de administrador.
-    const user = new User({
-      username,
-      password,
-      role: 'usuario'
+    const user = await User.findOne({
+      username: username.trim()
     });
-
-    await user.save();
-
-    res.status(201).json({
-      message: 'Usuario creado correctamente'
-    });
-  } catch (error) {
-    console.error('Error al registrar usuario:', error.message);
-
-    res.status(400).json({
-      error: 'No se pudo crear el usuario'
-    });
-  }
-});
-
-// Login
-router.post('/login', async (req, res) => {
-  try {
-    const { username, password } = req.body;
-
-    const user = await User.findOne({ username });
 
     if (!user) {
       return res.status(401).json({
@@ -74,7 +130,7 @@ router.post('/login', async (req, res) => {
       { expiresIn: '2h' }
     );
 
-    res.json({
+    return res.json({
       message: 'Login exitoso',
       token,
       user: {
@@ -84,9 +140,9 @@ router.post('/login', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error al iniciar sesión:', error.message);
+    console.error('Error al iniciar sesión:', error);
 
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Error interno al iniciar sesión'
     });
   }
