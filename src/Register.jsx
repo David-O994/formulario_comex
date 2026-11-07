@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 function Register({ onRegister }) {
   const [username, setUsername] = useState("");
@@ -30,6 +31,14 @@ function Register({ onRegister }) {
   };
 
   return (
+    <main className="dashboard-page" style={{ padding: "2rem" }}>
+      <Link 
+        to="/" 
+        className="button-back" 
+        style={{ textDecoration: "none", display: "inline-block", marginBottom: "1rem" }}
+      >
+        ← Volver al dashboard
+      </Link>
     <form onSubmit={handleSubmit}>
       <h2>Registro</h2>
 
@@ -73,6 +82,7 @@ function Register({ onRegister }) {
         Crear cuenta
       </button>
     </form>
+    </main>
   );
 }
 

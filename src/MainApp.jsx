@@ -1,86 +1,18 @@
 import { useState, useEffect } from "react";
-import Login from "./Login";
-import Register from "./Register";
-import App from "./App";
+import { Link } from "react-router-dom";
 import "./MainApp.css";
 
-function MainApp() {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
-  const [vista, setVista] = useState("dashboard");
-
+function MainApp({ user, token, onLogout, forcedView }) {
   const [quotations, setQuotations] = useState([]);
   const [loadingQuotations, setLoadingQuotations] = useState(false);
 
-  // Inicio de sesión
-  const handleLogin = async (username, password) => {
-    try {
-      const res = await fetch(
-        "http://localhost:3000/api/auth/login",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ username, password }),
-        }
-      );
+  const esAdmin = user?.role === "admin";
+  const esUsuario = Boolean(user && token && user.role === "usuario");
+  const estaAutenticado = Boolean(user && token);
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        alert(data.error || "No se pudo iniciar sesión.");
-        return;
-      }
-
-      if (!data.token || !data.user) {
-        alert("El servidor no devolvió los datos de autenticación esperados.");
-        return;
-      }
-
-      setToken(data.token);
-      setUser(data.user);
-      setQuotations([]);
-      setVista("dashboard");
-    } catch (error) {
-      console.error("Error al iniciar sesión:", error);
-      alert("No se pudo conectar con el servidor.");
-    }
-  };
-
-  // Registro de usuario
-  const handleRegister = async (username, password) => {
-    try {
-      const res = await fetch(
-        "http://localhost:3000/api/auth/register",{
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ username, password }),
-        }
-      );
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        alert(data.error || "No se pudo crear el usuario.");
-        return;
-      }
-
-      alert("Usuario creado correctamente.");
-
-      setVista("dashboard");
-    } catch (error) {
-      console.error("Error al registrar usuario:", error);
-      alert("No se pudo conectar con el servidor.");
-    }
-  };
-
-  // Cargar cotizaciones para el historial del administrador.
+  // Cargar cotizaciones para el historial del administrador si estamos en la vista forzada
   useEffect(() => {
-    if (!user || !token || user.role !== "admin" || vista !== "historial") {
+    if (!user || !token || user.role !== "admin" || forcedView !== "historial") {
       return;
     }
 
@@ -102,12 +34,9 @@ function MainApp() {
         const data = await res.json();
 
         if (res.status === 401) {
-          setUser(null);
-          setToken(null);
-          setQuotations([]);
-          setVista("dashboard");
-
+          onLogout();
           alert("Tu sesión ha expirado. Inicia sesión nuevamente.");
+          window.location.href = "/login";
           return;
         }
 
@@ -137,36 +66,14 @@ function MainApp() {
     return () => {
       cancelado = true;
     };
-  }, [user, token, vista]);
-
-  // Cerrar sesión y volver al dashboard público.
-  const handleLogout = () => {
-    setUser(null);
-    setToken(null);
-    setQuotations([]);
-    setVista("dashboard");
-  };
-
-  const volverAlDashboard = () => {
-    setVista("dashboard");
-  };
-
-  const esAdmin = user?.role === "admin";
-  const esUsuario = Boolean(
-    user && token && user.role === "usuario"
-    );
-  const estaAutenticado = Boolean(user && token);
+  }, [user, token, forcedView, onLogout]);
 
   return (
     <main className="dashboard-page">
       <header className="dashboard-header">
-        <button
-          type="button"
-          className="brand-button"
-          onClick={volverAlDashboard}
-        >
+        <Link to="/" className="brand-button" style={{ textDecoration: "none" }}>
           Inicio
-        </button>
+        </Link>
 
         <div className="header-actions">
           {estaAutenticado && (
@@ -178,7 +85,10 @@ function MainApp() {
               <button
                 type="button"
                 className="button-logout"
-                onClick={handleLogout}
+                onClick={() => {
+                  onLogout();
+                  window.location.href = "/";
+                }}
               >
                 Cerrar sesión
               </button>
@@ -188,7 +98,58 @@ function MainApp() {
       </header>
 
       <div className="dashboard-content">
-        {vista === "dashboard" && (
+        {/* Si estamos en la ruta de historial (/admin/historial) */}
+        {forcedView === "historial" && esAdmin ? (
+          <section className="dashboard-panel history-panel">
+            <Link to="/" className="button-back" style={{ textDecoration: "none", display: "inline-block", marginBottom: "1rem" }}>
+              ← Volver al dashboard
+            </Link>
+
+            <h1>Historial de cotizaciones</h1>
+
+            {loadingQuotations && <p>Cargando cotizaciones...</p>}
+
+            {!loadingQuotations && quotations.length === 0 && (
+              <p>No hay cotizaciones para mostrar.</p>
+            )}
+
+            {!loadingQuotations && quotations.length > 0 && (
+              <div className="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Origen</th>
+                      <th>Destino</th>
+                      <th>Días</th>
+                      <th>Peso (kg)</th>
+                      <th>Descripción</th>
+                      <th>Fecha</th>
+                      <th>Usuario</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {quotations.map((q) => (
+                      <tr key={q._id}>
+                        <td>{q.origin}</td>
+                        <td>{q.destination}</td>
+                        <td>{q.days ?? "—"}</td>
+                        <td>{q.weight}</td>
+                        <td>{q.description}</td>
+                        <td>
+                          {q.createdAt
+                            ? new Date(q.createdAt).toLocaleDateString("es-CL")
+                            : "—"}
+                        </td>
+                        <td>{q.userId?.username ?? "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        ) : (
+          /* Vista normal de la Tarjeta del Dashboard (Inicio) */
           <>
             <section className="dashboard-intro">
               <p className="dashboard-eyebrow">PANEL PRINCIPAL</p>
@@ -210,184 +171,50 @@ function MainApp() {
 
             <section className="dashboard-cards">
               {!estaAutenticado && (
-                <button
-                  type="button"
-                  className="dashboard-card"
-                  onClick={() => setVista("login")}
-                >
+                <Link to="/login" className="dashboard-card" style={{ textDecoration: "none" }}>
                   <span className="dashboard-card-icon">↪</span>
                   <h2>Iniciar sesión</h2>
                   <p>Accede a tu cuenta para continuar.</p>
                   <span className="dashboard-card-link">
                     Ingresar →
                   </span>
-                </button>
+                </Link>
               )}
 
               {esAdmin && (
                 <>
-                  <button
-                    type="button"
-                    className="dashboard-card"
-                    onClick={() => setVista("crear-usuario")}
-                  >
+                  <Link to="/admin/crear-usuario" className="dashboard-card" style={{ textDecoration: "none" }}>
                     <span className="dashboard-card-icon">＋</span>
                     <h2>Crear usuario</h2>
                     <p>Registra una nueva cuenta de usuario.</p>
                     <span className="dashboard-card-link">
                       Crear usuario →
                     </span>
-                  </button>
+                  </Link>
 
-                  <button
-                    type="button"
-                    className="dashboard-card"
-                    onClick={() => setVista("historial")}
-                  >
+                  <Link to="/admin/historial" className="dashboard-card" style={{ textDecoration: "none" }}>
                     <span className="dashboard-card-icon">▤</span>
                     <h2>Historial de cotizaciones</h2>
                     <p>Consulta las cotizaciones disponibles.</p>
                     <span className="dashboard-card-link">
                       Ver historial →
                     </span>
-                  </button>
+                  </Link>
                 </>
               )}
 
               {esUsuario && (
-                <button
-                  type="button"
-                  className="dashboard-card"
-                  onClick={() => setVista("crear-cotizacion")}
-                >
+                <Link to="/cotizaciones/crear" className="dashboard-card" style={{ textDecoration: "none" }}>
                   <span className="dashboard-card-icon">＋</span>
                   <h2>Crear cotización</h2>
                   <p>Completa los datos de tu próximo envío.</p>
                   <span className="dashboard-card-link">
                     Crear cotización →
                   </span>
-                </button>
+                </Link>
               )}
             </section>
           </>
-        )}
-
-        {vista === "login" && (
-          <section className="dashboard-panel">
-            <button
-              type="button"
-              className="button-back"
-              onClick={volverAlDashboard}
-            >
-              ← Volver al inicio
-            </button>
-
-            <Login onLogin={handleLogin} />
-          </section>
-        )}
-
-        {vista === "crear-usuario" && esAdmin && (
-          <section className="dashboard-panel">
-            <button
-              type="button"
-              className="button-back"
-              onClick={volverAlDashboard}
-            >
-              ← Volver al dashboard
-            </button>
-
-            <Register onRegister={handleRegister} />
-          </section>
-        )}
-
-        {vista === "crear-cotizacion" && esUsuario && (
-          <section className="dashboard-panel">
-            <button
-              type="button"
-              className="button-back"
-              onClick={volverAlDashboard}
-            >
-              ← Volver al dashboard
-            </button>
-
-            <App token={token} />
-          </section>
-        )}
-
-        {vista === "historial" && esAdmin && (
-          <section className="dashboard-panel history-panel">
-            <button
-              type="button"
-              className="button-back"
-              onClick={volverAlDashboard}
-            >
-              ← Volver al dashboard
-            </button>
-
-            <h1>Historial de cotizaciones</h1>
-
-            {loadingQuotations && (
-              <p>Cargando cotizaciones...</p>
-            )}
-
-            {!loadingQuotations && quotations.length === 0 && (
-              <p>No hay cotizaciones para mostrar.</p>
-            )}
-
-            {!loadingQuotations && quotations.length > 0 && (
-              <div className="table-container">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Origen</th>
-                      <th>Destino</th>
-                      <th>Días</th>
-                      <th>Peso (toneladas)</th>
-                      <th>Contenedores</th>
-                      <th>Descripción</th>
-                      <th>Costo CLP</th>
-                      <th>IVA CLP</th>
-                      <th>Total CLP</th>
-                      <th>Fecha</th>
-                      <th>Usuario</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {quotations.map((q) => (
-                      <tr key={q._id}>
-                        <td>{q.origin}</td>
-                        <td>{q.destination}</td>
-                        <td>{q.days ?? "—"}</td>
-                        <td>{q.weight}</td>
-                        <td>{q.contenedores ?? "—"}</td>
-                        <td>{q.description}</td>
-                        <td>
-                          {Number(q.cost).toLocaleString("es-CL")}
-                        </td>
-                        <td>
-                          {Number(q.ivaCLP).toLocaleString("es-CL")}
-                        </td>
-                        <td>
-                          {(
-                            Number(q.cost) + Number(q.ivaCLP)
-                          ).toLocaleString("es-CL")}
-                        </td>
-                        <td>
-                          {q.createdAt
-                            ? new Date(q.createdAt).toLocaleDateString(
-                                "es-CL"
-                              )
-                            : "—"}
-                        </td>
-                        <td>{q.userId?.username ?? "—"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
         )}
       </div>
     </main>
