@@ -4,6 +4,7 @@ import MainApp from "./MainApp";
 import Login from "./Login";
 import Register from "./Register";
 import CrearCotizacion from "./CrearCotizacion";
+import Cotizador from "./Cotizador";
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem("token") || null);
@@ -42,6 +43,12 @@ function App() {
               <Navigate to="/" />
             )
           } 
+        />
+
+        {/* Ruta de Excel */}
+        <Route 
+          path="/cotizador" 
+          element={<Cotizador />} 
         />
 
         {/* Ruta de Crear Usuario (Solo Admin) */}

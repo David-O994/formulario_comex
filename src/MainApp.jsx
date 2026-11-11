@@ -200,6 +200,15 @@ function MainApp({ user, token, onLogout, forcedView }) {
                       Ver historial →
                     </span>
                   </Link>
+
+                  <Link to="/cotizador" className="dashboard-card" style={{ textDecoration: "none" }}>
+                    <span className="dashboard-card-icon">📊</span>
+                    <h2>Módulo Cotizador</h2>
+                    <p>Sube y gestiona las tarifas desde Excel.</p>
+                    <span className="dashboard-card-link">
+                      Ir al cotizador →
+                    </span>
+                  </Link>
                 </>
               )}
 
