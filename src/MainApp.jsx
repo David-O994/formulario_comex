@@ -126,7 +126,7 @@ function MainApp({ user, token, onLogout, forcedView }) {
                       <th>Origen</th>
                       <th>Destino</th>
                       <th>Días</th>
-                      <th>Peso (kg)</th>
+                      <th>Peso (t)</th>
                       <th>Descripción</th>
                       <th>Fecha</th>
                       {esAdmin && <th>Usuario</th>}
