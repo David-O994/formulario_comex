@@ -116,6 +116,22 @@ router.get(
   }
 );
 
+router.get('/mis-cotizaciones', authMiddleware, async (req, res) => {
+  try {
+    // Importante: tu modelo usa req.user.userId según tus otras rutas
+    const quotations = await Quotation.find({
+      userId: req.user.userId
+    }).sort({ createdAt: -1 });
+
+    return res.json(quotations);
+  } catch (error) {
+    console.error('Error al obtener cotizaciones del usuario:', error);
+    return res.status(500).json({
+      error: 'Error al obtener el historial'
+    });
+  }
+});
+
 // Listar únicamente las cotizaciones del usuario autenticado.
 router.get('/', authMiddleware, async (req, res) => {
   try {

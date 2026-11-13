@@ -10,9 +10,12 @@ function MainApp({ user, token, onLogout, forcedView }) {
   const esUsuario = Boolean(user && token && user.role === "usuario");
   const estaAutenticado = Boolean(user && token);
 
-  // Cargar cotizaciones para el historial del administrador si estamos en la vista forzada
+  // Cargar cotizaciones (Sirve tanto para admin como para usuario según la vista)
   useEffect(() => {
-    if (!user || !token || user.role !== "admin" || forcedView !== "historial") {
+    const esVistaAdmin = user?.role === "admin" && forcedView === "historial";
+    const esVistaUsuario = user?.role === "usuario" && forcedView === "mis-cotizaciones";
+
+    if (!user || !token || (!esVistaAdmin && !esVistaUsuario)) {
       return;
     }
 
@@ -22,14 +25,16 @@ function MainApp({ user, token, onLogout, forcedView }) {
       setLoadingQuotations(true);
 
       try {
-        const res = await fetch(
-          "http://localhost:3000/api/quotations/admin/all",
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        // Seleccionamos el endpoint correcto según el rol y vista
+        const endpoint = esVistaAdmin
+          ? "http://localhost:3000/api/quotations/admin/all"
+          : "http://localhost:3000/api/quotations/mis-cotizaciones";
+
+        const res = await fetch(endpoint, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
         const data = await res.json();
 
@@ -98,14 +103,14 @@ function MainApp({ user, token, onLogout, forcedView }) {
       </header>
 
       <div className="dashboard-content">
-        {/* Si estamos en la ruta de historial (/admin/historial) */}
-        {forcedView === "historial" && esAdmin ? (
+        {/* Vista de historial (Admin o Usuario según corresponda) */}
+        {(forcedView === "historial" && esAdmin) || (forcedView === "mis-cotizaciones" && esUsuario) ? (
           <section className="dashboard-panel history-panel">
             <Link to="/" className="button-back" style={{ textDecoration: "none", display: "inline-block", marginBottom: "1rem" }}>
               ← Volver al dashboard
             </Link>
 
-            <h1>Historial de cotizaciones</h1>
+            <h1>{esAdmin ? "Historial de cotizaciones" : "Mi historial de cotizaciones"}</h1>
 
             {loadingQuotations && <p>Cargando cotizaciones...</p>}
 
@@ -124,7 +129,7 @@ function MainApp({ user, token, onLogout, forcedView }) {
                       <th>Peso (kg)</th>
                       <th>Descripción</th>
                       <th>Fecha</th>
-                      <th>Usuario</th>
+                      {esAdmin && <th>Usuario</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -140,7 +145,7 @@ function MainApp({ user, token, onLogout, forcedView }) {
                             ? new Date(q.createdAt).toLocaleDateString("es-CL")
                             : "—"}
                         </td>
-                        <td>{q.userId?.username ?? "—"}</td>
+                        {esAdmin && <td>{q.userId?.username ?? "—"}</td>}
                       </tr>
                     ))}
                   </tbody>
@@ -149,7 +154,7 @@ function MainApp({ user, token, onLogout, forcedView }) {
             )}
           </section>
         ) : (
-          /* Vista normal de la Tarjeta del Dashboard (Inicio) */
+          /* Vista normal de las Tarjetas del Dashboard (Inicio) */
           <>
             <section className="dashboard-intro">
               <p className="dashboard-eyebrow">PANEL PRINCIPAL</p>
@@ -213,14 +218,26 @@ function MainApp({ user, token, onLogout, forcedView }) {
               )}
 
               {esUsuario && (
-                <Link to="/cotizaciones/crear" className="dashboard-card" style={{ textDecoration: "none" }}>
-                  <span className="dashboard-card-icon">＋</span>
-                  <h2>Crear cotización</h2>
-                  <p>Completa los datos de tu próximo envío.</p>
-                  <span className="dashboard-card-link">
-                    Crear cotización →
-                  </span>
-                </Link>
+                <>
+                  <Link to="/cotizaciones/crear" className="dashboard-card" style={{ textDecoration: "none" }}>
+                    <span className="dashboard-card-icon">＋</span>
+                    <h2>Crear cotización</h2>
+                    <p>Completa los datos de tu próximo envío.</p>
+                    <span className="dashboard-card-link">
+                      Crear cotización →
+                    </span>
+                  </Link>
+
+                  {/* NUEVA TARJETA DE HISTORIAL PARA EL USUARIO */}
+                  <Link to="/mis-cotizaciones" className="dashboard-card" style={{ textDecoration: "none" }}>
+                    <span className="dashboard-card-icon">📋</span>
+                    <h2>Mis cotizaciones</h2>
+                    <p>Revisa el historial de tus envíos realizados.</p>
+                    <span className="dashboard-card-link">
+                      Ver mi historial →
+                    </span>
+                  </Link>
+                </>
               )}
             </section>
           </>

@@ -75,6 +75,18 @@ function App() {
           } 
         />
 
+        {/* ---> NUEVA RUTA: Historial de Cotizaciones para el Usuario normal <--- */}
+        <Route 
+          path="/mis-cotizaciones" 
+          element={
+            user?.role === "usuario" ? (
+              <MainApp user={user} token={token} onLogout={handleLogout} forcedView="mis-cotizaciones" />
+            ) : (
+              <Navigate to="/" />
+            )
+          } 
+        />
+
         {/* Ruta de Crear Cotización (Solo Usuario) */}
         <Route 
           path="/cotizaciones/crear" 
