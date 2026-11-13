@@ -25,7 +25,6 @@ function MainApp({ user, token, onLogout, forcedView }) {
       setLoadingQuotations(true);
 
       try {
-        // Seleccionamos el endpoint correcto según el rol y vista
         const endpoint = esVistaAdmin
           ? "http://localhost:3000/api/quotations/admin/all"
           : "http://localhost:3000/api/quotations/mis-cotizaciones";
@@ -103,7 +102,7 @@ function MainApp({ user, token, onLogout, forcedView }) {
       </header>
 
       <div className="dashboard-content">
-        {/* Vista de historial (Admin o Usuario según corresponda) */}
+        {/* VISTA DE HISTORIAL (Admin o Usuario según corresponda) */}
         {(forcedView === "historial" && esAdmin) || (forcedView === "mis-cotizaciones" && esUsuario) ? (
           <section className="dashboard-panel history-panel">
             <Link to="/" className="button-back" style={{ textDecoration: "none", display: "inline-block", marginBottom: "1rem" }}>
@@ -154,7 +153,7 @@ function MainApp({ user, token, onLogout, forcedView }) {
             )}
           </section>
         ) : (
-          /* Vista normal de las Tarjetas del Dashboard (Inicio) */
+          /* VISTA NORMAL DE LAS TARJETAS DEL DASHBOARD (INICIO) */
           <>
             <section className="dashboard-intro">
               <p className="dashboard-eyebrow">PANEL PRINCIPAL</p>
@@ -228,7 +227,6 @@ function MainApp({ user, token, onLogout, forcedView }) {
                     </span>
                   </Link>
 
-                  {/* NUEVA TARJETA DE HISTORIAL PARA EL USUARIO */}
                   <Link to="/mis-cotizaciones" className="dashboard-card" style={{ textDecoration: "none" }}>
                     <span className="dashboard-card-icon">📋</span>
                     <h2>Mis cotizaciones</h2>
