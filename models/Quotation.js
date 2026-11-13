@@ -7,17 +7,21 @@ const quotationSchema = new mongoose.Schema({
     required: true,
     index: true
   },
-  origin: {
+  origen: {
     type: String,
     required: true
   },
-  destination: {
+  destino: {
     type: String,
     required: true
   },
-  days: {
-    type: Number,
-    required: true
+  tarifas: {
+    min: { type: Number, required: true },
+    max: { type: Number, required: true }
+  },
+  transito: {
+    minDias: { type: Number, required: true },
+    maxDias: { type: Number, required: true }
   },
   weight: {
     type: Number,
@@ -30,21 +34,13 @@ const quotationSchema = new mongoose.Schema({
     min: 1,
     default: 1
   },
+  valorCarga: {
+    type: Number,
+    required: false
+  },
   description: {
     type: String,
     required: true
-  },
-  cost: {
-    type: Number,
-    required: true
-  },
-  ivaCLP: {
-    type: Number,
-    required: true
-  },
-  localCosts: {
-    type: Number,
-    default: 0
   },
   createdAt: {
     type: Date,

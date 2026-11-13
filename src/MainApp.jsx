@@ -124,8 +124,11 @@ function MainApp({ user, token, onLogout, forcedView }) {
                     <tr>
                       <th>Origen</th>
                       <th>Destino</th>
-                      <th>Días</th>
+                      <th>Días Tránsito</th>
                       <th>Peso (t)</th>
+                      <th>Contenedores</th>
+                      <th>Tarifa Est. (USD)</th>
+                      <th>Valor Carga</th>
                       <th>Descripción</th>
                       <th>Fecha</th>
                       {esAdmin && <th>Usuario</th>}
@@ -134,10 +137,21 @@ function MainApp({ user, token, onLogout, forcedView }) {
                   <tbody>
                     {quotations.map((q) => (
                       <tr key={q._id}>
-                        <td>{q.origin}</td>
-                        <td>{q.destination}</td>
-                        <td>{q.days ?? "—"}</td>
-                        <td>{q.weight}</td>
+                        <td>{q.origen}</td>
+                        <td>{q.destino}</td>
+                        <td>
+                          {q.transito 
+                            ? `${q.transito.minDias} - ${q.transito.maxDias} días` 
+                            : (q.days !== undefined ? `${q.days} días` : "—")}
+                        </td>
+                        <td>{q.weight} t</td>
+                        <td>{q.contenedores ?? "—"}</td>
+                        <td>
+                          {q.tarifas 
+                            ? `$${q.tarifas.min?.toLocaleString()} - $${q.tarifas.max?.toLocaleString()}` 
+                            : (q.cost ? `$${q.cost.toLocaleString()}` : "—")}
+                        </td>
+                        <td>{q.valorCarga ? `$${q.valorCarga.toLocaleString()}` : "—"}</td>
                         <td>{q.description}</td>
                         <td>
                           {q.createdAt

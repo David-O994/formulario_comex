@@ -6,6 +6,8 @@ const formularioInicial = {
   origin: "",
   destination: "",
   weight: "",
+  unidadPeso: "kg", // "kg" o "t"
+  valorCarga: "",   // Opcional
   description: "",
 };
 
@@ -52,10 +54,17 @@ function CrearCotizacion({ token }) {
     (t) => t.origen === formulario.origin && t.destino === formulario.destination
   );
 
+  // Obtener siempre el peso en kilogramos para la lógica de contenedores
+  const obtenerPesoEnKg = () => {
+    const valor = parseFloat(formulario.weight);
+    if (isNaN(valor) || valor <= 0) return 0;
+    return formulario.unidadPeso === "t" ? valor * 1000 : valor;
+  };
+
   // Función para calcular contenedores optimizada
-  const calcularContenedores = (pesoKg) => {
-    const kg = parseFloat(pesoKg);
-    if (isNaN(kg) || kg <= 0) return [{ tipo: "20'", cantidad: 1 }];
+  const calcularContenedores = () => {
+    const kg = obtenerPesoEnKg();
+    if (kg <= 0) return [{ tipo: "20'", cantidad: 1 }];
 
     const cap20 = 23000;
     const cap40 = 25000;
@@ -103,7 +112,10 @@ function CrearCotizacion({ token }) {
     return resultado;
   };
 
-  const contenedoresSugeridos = calcularContenedores(formulario.weight);
+  const contenedoresSugeridos = calcularContenedores();
+
+  // Calcular número total de contenedores para la estructura final
+  const totalContenedores = contenedoresSugeridos.reduce((acc, c) => acc + c.cantidad, 0);
 
   // Función para calcular el precio total basado en los contenedores sugeridos y la ruta
   const calcularPrecioTotal = () => {
@@ -206,9 +218,26 @@ function CrearCotizacion({ token }) {
 
     setEnviando(true);
 
+    // Convertir siempre a toneladas para almacenar en DB
+    const pesoKg = obtenerPesoEnKg();
+    const pesoToneladas = pesoKg / 1000;
+
+    // Estructura solicitada para la base de datos
     const datosCotizacion = {
-      ...formulario,
-      days: rutaSeleccionada.transito?.minDias || 0,
+      origen: formulario.origin.trim(),
+      destino: formulario.destination.trim(),
+      weight: pesoToneladas,
+      valorCarga: formulario.valorCarga ? Number(formulario.valorCarga) : undefined,
+      description: formulario.description.trim(),
+      contenedores: totalContenedores,
+      tarifas: {
+        min: precioEstimado.min,
+        max: precioEstimado.max,
+      },
+      transito: {
+        minDias: rutaSeleccionada.transito?.minDias || 0,
+        maxDias: rutaSeleccionada.transito?.maxDias || 0,
+      }
     };
 
     try {
@@ -327,28 +356,66 @@ function CrearCotizacion({ token }) {
               <h2>Información de la carga</h2>
               <p className="step-description">Cuéntanos qué deseas enviar.</p>
 
+              {/* CAMPO DE PESO CON TOGGLE TIPO PASTILLA */}
               <div className="field">
-                <label htmlFor="weight">Peso <span>*</span></label>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.25rem" }}>
+                  <label htmlFor="weight" style={{ margin: 0 }}>Peso <span>*</span></label>
+                  
+                  {/* Toggle para alternar Unidad (Pastillas) */}
+                  <div style={{ display: "flex", background: "#e9ecef", borderRadius: "4px", padding: "2px" }}>
+                    <button
+                      type="button"
+                      onClick={() => setFormulario({ ...formulario, unidadPeso: "kg" })}
+                      style={{
+                        padding: "2px 8px",
+                        fontSize: "0.8rem",
+                        border: "none",
+                        background: formulario.unidadPeso === "kg" ? "#fa8a0e" : "transparent",
+                        color: formulario.unidadPeso === "kg" ? "#fff" : "#495057",
+                        borderRadius: "3px",
+                        cursor: "pointer"
+                      }}
+                    >
+                      kg
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormulario({ ...formulario, unidadPeso: "t" })}
+                      style={{
+                        padding: "2px 8px",
+                        fontSize: "0.8rem",
+                        border: "none",
+                        background: formulario.unidadPeso === "t" ? "#fa8a0e" : "transparent",
+                        color: formulario.unidadPeso === "t" ? "#fff" : "#495057",
+                        borderRadius: "3px",
+                        cursor: "pointer"
+                      }}
+                    >
+                      t
+                    </button>
+                  </div>
+                </div>
+
                 <div className="input-with-unit">
                   <input
                     id="weight"
                     type="number"
                     name="weight"
                     min="0.01"
-                    step="0.01"
+                    step="any"
                     value={formulario.weight}
                     onChange={manejarCambio}
                     className={errores.weight ? "input-error" : ""}
-                    placeholder="Ej: 25000"
+                    placeholder={formulario.unidadPeso === "kg" ? "Ej: 46000" : "Ej: 46"}
                     required
                   />
-                  <span>kg</span>
+                  <span>{formulario.unidadPeso}</span>
                 </div>
 
-                {/* Contenedores sugerido */}
+                {/* Contenedores sugeridos */}
                 <div style={{ marginTop: "0.75rem", padding: "0.5rem", backgroundColor: "#f8f9fa", borderRadius: "4px", border: "1px solid #e9ecef" }}>
                   <small style={{ display: "block", color: "#6c757d", marginBottom: "0.25rem", fontWeight: "bold" }}>
-                    Contenedores sugerido:
+                    Contenedores sugeridos:
                   </small>
                   {contenedoresSugeridos.map((c, idx) => (
                     <div key={idx} style={{ fontSize: "0.95rem", color: "#212529", fontWeight: "500" }}>
@@ -358,6 +425,21 @@ function CrearCotizacion({ token }) {
                 </div>
 
                 {errores.weight && <span className="error">{errores.weight}</span>}
+              </div>
+
+              {/* VALOR DE CARGA OPCIONAL */}
+              <div className="field">
+                <label htmlFor="valorCarga">Valor de carga (Opcional)</label>
+                <input
+                  id="valorCarga"
+                  type="number"
+                  name="valorCarga"
+                  min="0"
+                  step="any"
+                  value={formulario.valorCarga}
+                  onChange={manejarCambio}
+                  placeholder="Ej: 50000"
+                />
               </div>
 
               <div className="field">

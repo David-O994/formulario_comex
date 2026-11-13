@@ -19,63 +19,58 @@ function adminMiddleware(req, res, next) {
 router.post('/', authMiddleware, async (req, res) => {
   try {
     const {
-      origin,
-      destination,
-      days,
+      origen,
+      destino,
       weight,
-      description
+      valorCarga,
+      description,
+      contenedores,
+      tarifas,
+      transito
     } = req.body;
 
-    const pesoKg = Number(weight);
+    const pesoToneladas = Number(weight);
 
     if (
-      typeof origin !== 'string' ||
-      !origin.trim() ||
-      typeof destination !== 'string' ||
-      !destination.trim() ||
+      typeof origen !== 'string' ||
+      !origen.trim() ||
+      typeof destino !== 'string' ||
+      !destino.trim() ||
       typeof description !== 'string' ||
       !description.trim() ||
       weight === undefined ||
       weight === null ||
-      weight === '' ||
-      !Number.isFinite(pesoKg) ||
-      pesoKg <= 0 ||
-      days === undefined ||
-      days === null ||
-      days === '' ||
-      !Number.isInteger(Number(days)) ||
-      Number(days) < 0
+      !Number.isFinite(pesoToneladas) ||
+      pesoToneladas <= 0 ||
+      !contenedores ||
+      !tarifas ||
+      typeof tarifas.min !== 'number' ||
+      typeof tarifas.max !== 'number' ||
+      !transito ||
+      typeof transito.minDias !== 'number' ||
+      typeof transito.maxDias !== 'number'
     ) {
       return res.status(400).json({
         error: 'Los datos de la cotización no son válidos'
       });
     }
 
-    // Convertir kg a toneladas.
-    const pesoToneladas = pesoKg / 1000;
-
-    // Un contenedor por cada 25 toneladas, mínimo uno.
-    const contenedores = Math.max(
-      1,
-      Math.ceil(pesoToneladas / 25)
-    );
-
-    // Mantener el cálculo actual de costos.
-    const baseRateUSD = 1000;
-    const totalCostUSD = baseRateUSD + pesoKg * 10;
-    const totalCostCLP = totalCostUSD * 950;
-    const ivaCLP = totalCostCLP * 0.19;
-
     const quotation = new Quotation({
       userId: req.user.userId,
-      origin: origin.trim(),
-      destination: destination.trim(),
-      days: Number(days),
+      origen: origen.trim(),
+      destino: destino.trim(),
       weight: pesoToneladas,
-      contenedores,
+      valorCarga: valorCarga !== undefined && valorCarga !== '' ? Number(valorCarga) : undefined,
       description: description.trim(),
-      cost: totalCostCLP,
-      ivaCLP
+      contenedores: Number(contenedores),
+      tarifas: {
+        min: Number(tarifas.min),
+        max: Number(tarifas.max)
+      },
+      transito: {
+        minDias: Number(transito.minDias),
+        maxDias: Number(transito.maxDias)
+      }
     });
 
     await quotation.save();
@@ -94,7 +89,6 @@ router.post('/', authMiddleware, async (req, res) => {
 });
 
 // Historial global: solo administrador.
-// Debe declararse antes de la ruta GET '/'.
 router.get(
   '/admin/all',
   authMiddleware,
@@ -116,9 +110,9 @@ router.get(
   }
 );
 
+// Listar únicamente las cotizaciones del usuario autenticado.
 router.get('/mis-cotizaciones', authMiddleware, async (req, res) => {
   try {
-    // Importante: tu modelo usa req.user.userId según tus otras rutas
     const quotations = await Quotation.find({
       userId: req.user.userId
     }).sort({ createdAt: -1 });
@@ -132,7 +126,6 @@ router.get('/mis-cotizaciones', authMiddleware, async (req, res) => {
   }
 });
 
-// Listar únicamente las cotizaciones del usuario autenticado.
 router.get('/', authMiddleware, async (req, res) => {
   try {
     const quotations = await Quotation.find({
