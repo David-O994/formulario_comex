@@ -157,4 +157,23 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// Listar todos los usuarios (Solo Administrador)
+router.get(
+  '/admin/usuarios',
+  authMiddleware,
+  adminMiddleware,
+  async (req, res) => {
+    try {
+      // Buscamos todos los usuarios excluyendo la contraseña y ordenando por fecha de creación descendente
+      const usuarios = await User.find({}).select('-password').sort({ createdAt: -1 });
+      return res.json(usuarios);
+    } catch (error) {
+      console.error('Error al obtener la lista de usuarios:', error);
+      return res.status(500).json({
+        error: 'No se pudo obtener la lista de usuarios'
+      });
+    }
+  }
+);
+
 export default router;

@@ -3,31 +3,37 @@ import { Link } from "react-router-dom";
 import "./MainApp.css";
 
 function MainApp({ user, token, onLogout, forcedView }) {
-  const [quotations, setQuotations] = useState([]);
-  const [loadingQuotations, setLoadingQuotations] = useState(false);
+  const [dataList, setDataList] = useState([]);
+  const [loadingData, setLoadingData] = useState(false);
 
   const esAdmin = user?.role === "admin";
   const esUsuario = Boolean(user && token && user.role === "usuario");
   const estaAutenticado = Boolean(user && token);
 
-  // Cargar cotizaciones (Sirve tanto para admin como para usuario según la vista)
+  // Cargar datos según la vista activa (Historial de cotizaciones o Lista de usuarios)
   useEffect(() => {
-    const esVistaAdmin = user?.role === "admin" && forcedView === "historial";
-    const esVistaUsuario = user?.role === "usuario" && forcedView === "mis-cotizaciones";
+    const esVistaAdminHistorial = user?.role === "admin" && forcedView === "historial";
+    const esVistaListaUsuarios = user?.role === "admin" && forcedView === "lista-usuarios";
+    const esVistaMisCotizaciones = (user?.role === "usuario" || user?.role === "admin") && forcedView === "mis-cotizaciones";
 
-    if (!user || !token || (!esVistaAdmin && !esVistaUsuario)) {
+    if (!user || !token || (!esVistaAdminHistorial && !esVistaListaUsuarios && !esVistaMisCotizaciones)) {
       return;
     }
 
     let cancelado = false;
 
-    const cargarCotizaciones = async () => {
-      setLoadingQuotations(true);
+    const cargarDatos = async () => {
+      setLoadingData(true);
 
       try {
-        const endpoint = esVistaAdmin
-          ? "http://localhost:3000/api/quotations/admin/all"
-          : "http://localhost:3000/api/quotations/mis-cotizaciones";
+        let endpoint = "";
+        if (esVistaAdminHistorial) {
+          endpoint = "http://localhost:3000/api/quotations/admin/all";
+        } else if (esVistaListaUsuarios) {
+          endpoint = "http://localhost:3000/api/auth/admin/usuarios";
+        } else {
+          endpoint = "http://localhost:3000/api/quotations/mis-cotizaciones";
+        }
 
         const res = await fetch(endpoint, {
           headers: {
@@ -46,26 +52,26 @@ function MainApp({ user, token, onLogout, forcedView }) {
 
         if (!res.ok) {
           throw new Error(
-            data.error || "No se pudieron cargar las cotizaciones."
+            data.error || "No se pudieron cargar los datos."
           );
         }
 
         if (!cancelado) {
-          setQuotations(Array.isArray(data) ? data : []);
+          setDataList(Array.isArray(data) ? data : []);
         }
       } catch (error) {
         if (!cancelado) {
-          console.error("Error cargando cotizaciones:", error);
-          alert(error.message || "No se pudieron cargar las cotizaciones.");
+          console.error("Error cargando datos:", error);
+          alert(error.message || "No se pudieron cargar los datos.");
         }
       } finally {
         if (!cancelado) {
-          setLoadingQuotations(false);
+          setLoadingData(false);
         }
       }
     };
 
-    cargarCotizaciones();
+    cargarDatos();
 
     return () => {
       cancelado = true;
@@ -102,22 +108,66 @@ function MainApp({ user, token, onLogout, forcedView }) {
       </header>
 
       <div className="dashboard-content">
-        {/* VISTA DE HISTORIAL (Admin o Usuario según corresponda) */}
-        {(forcedView === "historial" && esAdmin) || (forcedView === "mis-cotizaciones" && esUsuario) ? (
+        {/* VISTA DE LISTADO DE USUARIOS (Solo Admin) */}
+        {forcedView === "lista-usuarios" && esAdmin ? (
           <section className="dashboard-panel history-panel">
             <Link to="/" className="button-back" style={{ textDecoration: "none", display: "inline-block", marginBottom: "1rem" }}>
               ← Volver al dashboard
             </Link>
 
-            <h1>{esAdmin ? "Historial de cotizaciones" : "Mi historial de cotizaciones"}</h1>
+            <h1>Listado de usuarios</h1>
 
-            {loadingQuotations && <p>Cargando cotizaciones...</p>}
+            {loadingData && <p>Cargando usuarios...</p>}
 
-            {!loadingQuotations && quotations.length === 0 && (
+            {!loadingData && dataList.length === 0 && (
+              <p>No hay usuarios para mostrar.</p>
+            )}
+
+            {!loadingData && dataList.length > 0 && (
+              <div className="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Nombre</th>
+                      <th>Rol</th>
+                      <th>Fecha registro</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dataList.map((u) => (
+                      <tr key={u._id}>
+                        <td>{u._id}</td>
+                        <td>{u.username}</td>
+                        <td>{u.role}</td>
+                        <td>
+                          {u.createdAt
+                            ? new Date(u.createdAt).toLocaleDateString("es-CL")
+                            : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        ) : /* VISTA DE HISTORIAL (Admin o Usuario según corresponda) */
+        (forcedView === "historial" && esAdmin) || (forcedView === "mis-cotizaciones" && (esUsuario || esAdmin)) ? (
+          <section className="dashboard-panel history-panel">
+            <Link to="/" className="button-back" style={{ textDecoration: "none", display: "inline-block", marginBottom: "1rem" }}>
+              ← Volver al dashboard
+            </Link>
+
+            <h1>{esAdmin && forcedView === "historial" ? "Historial de cotizaciones" : "Mi historial de cotizaciones"}</h1>
+
+            {loadingData && <p>Cargando cotizaciones...</p>}
+
+            {!loadingData && dataList.length === 0 && (
               <p>No hay cotizaciones para mostrar.</p>
             )}
 
-            {!loadingQuotations && quotations.length > 0 && (
+            {!loadingData && dataList.length > 0 && (
               <div className="table-container">
                 <table>
                   <thead>
@@ -131,11 +181,11 @@ function MainApp({ user, token, onLogout, forcedView }) {
                       <th>Valor Carga</th>
                       <th>Descripción</th>
                       <th>Fecha</th>
-                      {esAdmin && <th>Usuario</th>}
+                      {esAdmin && forcedView === "historial" && <th>Usuario</th>}
                     </tr>
                   </thead>
                   <tbody>
-                    {quotations.map((q) => (
+                    {dataList.map((q) => (
                       <tr key={q._id}>
                         <td>{q.origen}</td>
                         <td>{q.destino}</td>
@@ -158,7 +208,7 @@ function MainApp({ user, token, onLogout, forcedView }) {
                             ? new Date(q.createdAt).toLocaleDateString("es-CL")
                             : "—"}
                         </td>
-                        {esAdmin && <td>{q.userId?.username ?? "—"}</td>}
+                        {esAdmin && forcedView === "historial" && <td>{q.userId?.username ?? "—"}</td>}
                       </tr>
                     ))}
                   </tbody>
@@ -201,6 +251,7 @@ function MainApp({ user, token, onLogout, forcedView }) {
 
               {esAdmin && (
                 <>
+                  {/* Fila 1: Crear usuario | Crear cotización | Módulo Cotizador */}
                   <Link to="/admin/crear-usuario" className="dashboard-card" style={{ textDecoration: "none" }}>
                     <span className="dashboard-card-icon">＋</span>
                     <h2>Crear usuario</h2>
@@ -210,12 +261,12 @@ function MainApp({ user, token, onLogout, forcedView }) {
                     </span>
                   </Link>
 
-                  <Link to="/admin/historial" className="dashboard-card" style={{ textDecoration: "none" }}>
-                    <span className="dashboard-card-icon">▤</span>
-                    <h2>Historial de cotizaciones</h2>
-                    <p>Consulta las cotizaciones disponibles.</p>
+                  <Link to="/cotizaciones/crear" className="dashboard-card" style={{ textDecoration: "none" }}>
+                    <span className="dashboard-card-icon">＋</span>
+                    <h2>Crear cotización</h2>
+                    <p>Completa los datos de tu próximo envío.</p>
                     <span className="dashboard-card-link">
-                      Ver historial →
+                      Crear cotización →
                     </span>
                   </Link>
 
@@ -225,6 +276,34 @@ function MainApp({ user, token, onLogout, forcedView }) {
                     <p>Sube y gestiona las tarifas desde Excel.</p>
                     <span className="dashboard-card-link">
                       Ir al cotizador →
+                    </span>
+                  </Link>
+
+                  {/* Fila 2: Listado de usuarios | Mis cotizaciones | Historial de cotizaciones */}
+                  <Link to="/admin/lista-usuarios" className="dashboard-card" style={{ textDecoration: "none" }}>
+                    <span className="dashboard-card-icon">👥</span>
+                    <h2>Listado de usuarios</h2>
+                    <p>Consulta los usuarios registrados en el sistema.</p>
+                    <span className="dashboard-card-link">
+                      Ver usuarios →
+                    </span>
+                  </Link>
+
+                  <Link to="/mis-cotizaciones" className="dashboard-card" style={{ textDecoration: "none" }}>
+                    <span className="dashboard-card-icon">📋</span>
+                    <h2>Mis cotizaciones</h2>
+                    <p>Revisa el historial de tus envíos realizados.</p>
+                    <span className="dashboard-card-link">
+                      Ver mi historial →
+                    </span>
+                  </Link>
+
+                  <Link to="/admin/historial" className="dashboard-card" style={{ textDecoration: "none" }}>
+                    <span className="dashboard-card-icon">▤</span>
+                    <h2>Historial de cotizaciones</h2>
+                    <p>Consulta las cotizaciones disponibles.</p>
+                    <span className="dashboard-card-link">
+                      Ver historial →
                     </span>
                   </Link>
                 </>

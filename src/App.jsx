@@ -75,11 +75,11 @@ function App() {
           } 
         />
 
-        {/* ---> NUEVA RUTA: Historial de Cotizaciones para el Usuario normal <--- */}
+        {/* Ruta de Mis Cotizaciones (Permite Usuario y Admin) */}
         <Route 
           path="/mis-cotizaciones" 
           element={
-            user?.role === "usuario" ? (
+            user?.role === "usuario" || user?.role === "admin" ? (
               <MainApp user={user} token={token} onLogout={handleLogout} forcedView="mis-cotizaciones" />
             ) : (
               <Navigate to="/" />
@@ -87,12 +87,24 @@ function App() {
           } 
         />
 
-        {/* Ruta de Crear Cotización (Solo Usuario) */}
+        {/* Ruta de Crear Cotización (Permite Usuario y Admin) */}
         <Route 
           path="/cotizaciones/crear" 
           element={
-            user?.role === "usuario" ? (
+            user?.role === "usuario" || user?.role === "admin" ? (
               <CrearCotizacion token={token} />
+            ) : (
+              <Navigate to="/" />
+            )
+          } 
+        />
+
+        {/* Ruta de Listado de Usuarios (Solo Admin) */}
+        <Route 
+          path="/admin/lista-usuarios" 
+          element={
+            user?.role === "admin" ? (
+              <MainApp user={user} token={token} onLogout={handleLogout} forcedView="lista-usuarios" />
             ) : (
               <Navigate to="/" />
             )
