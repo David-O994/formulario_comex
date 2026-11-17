@@ -38,6 +38,14 @@ const quotationSchema = new mongoose.Schema({
     type: Number,
     required: false
   },
+  precioCLP: {
+    min: { type: Number, required: false },
+    max: { type: Number, required: false }
+  },
+  tasaDolar: {
+    type: Number,
+    required: false
+  },
   description: {
     type: String,
     required: true

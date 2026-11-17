@@ -80,12 +80,65 @@ function MainApp({ user, token, onLogout, forcedView }) {
 
   return (
     <main className="dashboard-page">
-      <header className="dashboard-header">
-        <Link to="/" className="brand-button" style={{ textDecoration: "none" }}>
-          Inicio
-        </Link>
+      <header className="dashboard-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+        {/* Navegación y opciones del menú */}
+        <nav style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
+          <a 
+            href="https://www.cintac.cl/" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            style={{ fontWeight: "bold", textDecoration: "none", color: "inherit" }}
+          >
+            CINTAC
+          </a>
+          <span>|</span>
+          <Link to="/" style={{ textDecoration: "none" }}>
+            Inicio
+          </Link>
 
-        <div className="header-actions">
+          {/* Opciones para USUARIO ESTÁNDAR */}
+          {estaAutenticado && user?.role !== "admin" && (
+            <>
+              <span>|</span>
+              <Link to="/cotizaciones/crear" style={{ textDecoration: "none" }}>
+                Cotizar
+              </Link>
+              <span>|</span>
+              <Link to="/mis-cotizaciones" style={{ textDecoration: "none" }}>
+                Historial cotizaciones
+              </Link>
+            </>
+          )}
+
+          {/* Opciones exclusivas para ADMINISTRADOR */}
+          {estaAutenticado && user?.role === "admin" && (
+            <>
+              <span>|</span>
+              <Link to="/admin/crear-usuario" style={{ textDecoration: "none" }}>
+                Crear usuario
+              </Link>
+              <span>|</span>
+              <Link to="/cotizaciones/crear" style={{ textDecoration: "none" }}>
+                Cotizar
+              </Link>
+              <span>|</span>
+              <Link to="/admin/lista-usuarios" style={{ textDecoration: "none" }}>
+                Lista usuarios
+              </Link>
+              <span>|</span>
+              <Link to="/admin/historial" style={{ textDecoration: "none" }}>
+                Historial cotizaciones
+              </Link>
+              <span>|</span>
+              <Link to="/admin/historial" style={{ textDecoration: "none" }}>
+                Excel
+              </Link>
+            </>
+          )}
+        </nav>
+
+        {/* Acciones de sesión de usuario */}
+        <div className="header-actions" style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
           {estaAutenticado && (
             <>
               <span className="user-greeting">
@@ -131,7 +184,6 @@ function MainApp({ user, token, onLogout, forcedView }) {
                       <th>ID</th>
                       <th>Nombre</th>
                       <th>Rol</th>
-                      <th>Fecha registro</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -140,11 +192,6 @@ function MainApp({ user, token, onLogout, forcedView }) {
                         <td>{u._id}</td>
                         <td>{u.username}</td>
                         <td>{u.role}</td>
-                        <td>
-                          {u.createdAt
-                            ? new Date(u.createdAt).toLocaleDateString("es-CL")
-                            : "—"}
-                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -180,6 +227,7 @@ function MainApp({ user, token, onLogout, forcedView }) {
                       <th>Tarifa Est. (USD)</th>
                       <th>Valor Carga</th>
                       <th>Descripción</th>
+                      <th>Precio</th>
                       <th>Fecha</th>
                       {esAdmin && forcedView === "historial" && <th>Usuario</th>}
                     </tr>
@@ -203,6 +251,13 @@ function MainApp({ user, token, onLogout, forcedView }) {
                         </td>
                         <td>{q.valorCarga ? `$${q.valorCarga.toLocaleString()}` : "—"}</td>
                         <td>{q.description}</td>
+                        <td>
+                          {q.precioCLP && q.precioCLP.min !== undefined && q.precioCLP.max !== undefined
+                            ? (q.precioCLP.min === q.precioCLP.max
+                                ? `$${Math.round(q.precioCLP.min).toLocaleString('es-CL')} CLP`
+                                : `$${Math.round(q.precioCLP.min).toLocaleString('es-CL')} - $${Math.round(q.precioCLP.max).toLocaleString('es-CL')} CLP`)
+                            : "—"}
+                        </td>
                         <td>
                           {q.createdAt
                             ? new Date(q.createdAt).toLocaleDateString("es-CL")

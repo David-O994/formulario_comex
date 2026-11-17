@@ -15,6 +15,24 @@ function adminMiddleware(req, res, next) {
   next();
 }
 
+// Función auxiliar para obtener el valor actual del dólar desde mindicador.cl
+async function obtenerValorDolar() {
+  try {
+    const respuesta = await fetch('https://mindicador.cl/api/dolar');
+    if (!respuesta.ok) throw new Error('No se pudo conectar con mindicador.cl');
+    
+    const data = await respuesta.json();
+    // mindicador.cl retorna un arreglo 'serie' donde el primer elemento [0] es el valor más reciente
+    if (data && data.serie && data.serie.length > 0) {
+      return data.serie[0].valor;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error al obtener la tasa del dólar:', error);
+    return null;
+  }
+}
+
 // Crear cotización: requiere autenticación.
 router.post('/', authMiddleware, async (req, res) => {
   try {
@@ -26,7 +44,8 @@ router.post('/', authMiddleware, async (req, res) => {
       description,
       contenedores,
       tarifas,
-      transito
+      transito,
+      precio
     } = req.body;
 
     const pesoToneladas = Number(weight);
@@ -38,6 +57,7 @@ router.post('/', authMiddleware, async (req, res) => {
       !destino.trim() ||
       typeof description !== 'string' ||
       !description.trim() ||
+      description.length > 200 ||
       weight === undefined ||
       weight === null ||
       !Number.isFinite(pesoToneladas) ||
@@ -55,12 +75,31 @@ router.post('/', authMiddleware, async (req, res) => {
       });
     }
 
+    const tieneValorCarga = valorCarga !== undefined && valorCarga !== '' && !isNaN(Number(valorCarga));
+
+    // Obtener la tasa de cambio actual USD -> CLP desde mindicador.cl
+    const tasaDolar = await obtenerValorDolar();
+
+    let precioCLPFinal = undefined;
+    if (tieneValorCarga && precio && tasaDolar) {
+      precioCLPFinal = {
+        min: Number(precio.min) * tasaDolar,
+        max: Number(precio.max) * tasaDolar
+      };
+    }
+
     const quotation = new Quotation({
       userId: req.user.userId,
       origen: origen.trim(),
       destino: destino.trim(),
       weight: pesoToneladas,
-      valorCarga: valorCarga !== undefined && valorCarga !== '' ? Number(valorCarga) : undefined,
+      valorCarga: tieneValorCarga ? Number(valorCarga) : undefined,
+      precio: tieneValorCarga && precio ? {
+        min: Number(precio.min),
+        max: Number(precio.max)
+      } : undefined,
+      precioCLP: precioCLPFinal,
+      tasaDolar: tasaDolar || undefined,
       description: description.trim(),
       contenedores: Number(contenedores),
       tarifas: {

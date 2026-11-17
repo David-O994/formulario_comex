@@ -45,10 +45,16 @@ function App() {
           } 
         />
 
-        {/* Ruta de Excel */}
+        {/* Ruta de Excel / Cotizador (Protegida: Solo Admin) */}
         <Route 
           path="/cotizador" 
-          element={<Cotizador />} 
+          element={
+            user?.role === "admin" ? (
+              <Cotizador />
+            ) : (
+              <Navigate to="/" />
+            )
+          } 
         />
 
         {/* Ruta de Crear Usuario (Solo Admin) */}

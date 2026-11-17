@@ -8,6 +8,7 @@ const formularioInicial = {
   weight: "",
   unidadPeso: "kg", // "kg" o "t"
   valorCarga: "",   // Opcional
+  tasaArancel: "6", // "6" o "0"
   description: "",
 };
 
@@ -69,24 +70,20 @@ function CrearCotizacion({ token }) {
     const cap20 = 23000;
     const cap40 = 25000;
 
-    // 1. Si cabe exactamente en un contenedor de 20'
     if (kg <= cap20) {
       return [{ tipo: "20'", cantidad: 1 }];
     }
     
-    // 2. Si equivale exactamente a dos contenedores de 20' (ej. 46000 kg)
     if (kg > cap20 && kg <= cap20 * 2) {
       if (kg > cap40) {
         return [{ tipo: "20'", cantidad: 2 }];
       }
     }
 
-    // 3. Si cabe exactamente en un contenedor de 40'
     if (kg <= cap40) {
       return [{ tipo: "40'", cantidad: 1 }];
     }
 
-    // 4. Lógica general para pesos mayores: empaquetado optimizado
     let pesoRestante = kg;
     let cont40 = 0;
     let cont20 = 0;
@@ -113,16 +110,14 @@ function CrearCotizacion({ token }) {
   };
 
   const contenedoresSugeridos = calcularContenedores();
-
-  // Calcular número total de contenedores para la estructura final
   const totalContenedores = contenedoresSugeridos.reduce((acc, c) => acc + c.cantidad, 0);
 
-  // Función para calcular el precio total basado en los contenedores sugeridos y la ruta
+  // Función para calcular el precio total aplicando las fórmulas de flete, CIF, arancel e IVA
   const calcularPrecioTotal = () => {
     if (!rutaSeleccionada || !rutaSeleccionada.tarifas) return { min: 0, max: 0 };
 
-    let totalMin = 0;
-    let totalMax = 0;
+    let fleteMin = 0;
+    let fleteMax = 0;
 
     const tarifa20Min = Number(rutaSeleccionada.tarifas['20']?.min || 0);
     const tarifa20Max = Number(rutaSeleccionada.tarifas['20']?.max || 0);
@@ -131,18 +126,57 @@ function CrearCotizacion({ token }) {
 
     contenedoresSugeridos.forEach((c) => {
       if (c.tipo === "20'") {
-        totalMin += tarifa20Min * c.cantidad;
-        totalMax += tarifa20Max * c.cantidad;
+        fleteMin += tarifa20Min * c.cantidad;
+        fleteMax += tarifa20Max * c.cantidad;
       } else if (c.tipo === "40'") {
-        totalMin += tarifa40Min * c.cantidad;
-        totalMax += tarifa40Max * c.cantidad;
+        fleteMin += tarifa40Min * c.cantidad;
+        fleteMax += tarifa40Max * c.cantidad;
       }
     });
 
-    return { min: totalMin, max: totalMax };
+    const valorCargaNum = parseFloat(formulario.valorCarga);
+    const tieneValorCarga = !isNaN(valorCargaNum) && valorCargaNum > 0;
+
+    if (!tieneValorCarga) {
+      return { min: fleteMin, max: fleteMax };
+    }
+
+    const tasaArancel = formulario.tasaArancel === "0" ? 0 : 0.06;
+
+    // Fórmulas aplicadas con o sin arancel según la selección
+    const calcularTotalConTributos = (flete) => {
+      const cif = flete + valorCargaNum;
+      const arancel = cif * tasaArancel;
+      const iva = (cif + arancel) * 0.19;
+      return cif + arancel + iva;
+    };
+
+    return {
+      min: calcularTotalConTributos(fleteMin),
+      max: calcularTotalConTributos(fleteMax)
+    };
   };
 
   const precioEstimado = calcularPrecioTotal();
+  const fleteBaseEstimado = (() => {
+    if (!rutaSeleccionada || !rutaSeleccionada.tarifas) return { min: 0, max: 0 };
+    let min = 0, max = 0;
+    const tarifa20Min = Number(rutaSeleccionada.tarifas['20']?.min || 0);
+    const tarifa20Max = Number(rutaSeleccionada.tarifas['20']?.max || 0);
+    const tarifa40Min = Number(rutaSeleccionada.tarifas['40']?.min || 0);
+    const tarifa40Max = Number(rutaSeleccionada.tarifas['40']?.max || 0);
+
+    contenedoresSugeridos.forEach((c) => {
+      if (c.tipo === "20'") {
+        min += tarifa20Min * c.cantidad;
+        max += tarifa20Max * c.cantidad;
+      } else if (c.tipo === "40'") {
+        min += tarifa40Min * c.cantidad;
+        max += tarifa40Max * c.cantidad;
+      }
+    });
+    return { min, max };
+  })();
 
   const manejarCambio = (evento) => {
     const { name, value } = evento.target;
@@ -218,21 +252,24 @@ function CrearCotizacion({ token }) {
 
     setEnviando(true);
 
-    // Convertir siempre a toneladas para almacenar en DB
     const pesoKg = obtenerPesoEnKg();
     const pesoToneladas = pesoKg / 1000;
+    const tieneValorCarga = formulario.valorCarga !== "" && !isNaN(Number(formulario.valorCarga));
 
-    // Estructura solicitada para la base de datos
     const datosCotizacion = {
       origen: formulario.origin.trim(),
       destino: formulario.destination.trim(),
       weight: pesoToneladas,
-      valorCarga: formulario.valorCarga ? Number(formulario.valorCarga) : undefined,
+      valorCarga: tieneValorCarga ? Number(formulario.valorCarga) : undefined,
+      precio: tieneValorCarga ? {
+        min: precioEstimado.min,
+        max: precioEstimado.max,
+      } : undefined,
       description: formulario.description.trim(),
       contenedores: totalContenedores,
       tarifas: {
-        min: precioEstimado.min,
-        max: precioEstimado.max,
+        min: fleteBaseEstimado.min,
+        max: fleteBaseEstimado.max,
       },
       transito: {
         minDias: rutaSeleccionada.transito?.minDias || 0,
@@ -356,12 +393,10 @@ function CrearCotizacion({ token }) {
               <h2>Información de la carga</h2>
               <p className="step-description">Cuéntanos qué deseas enviar.</p>
 
-              {/* CAMPO DE PESO CON TOGGLE TIPO PASTILLA */}
               <div className="field">
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.25rem" }}>
                   <label htmlFor="weight" style={{ margin: 0 }}>Peso <span>*</span></label>
                   
-                  {/* Toggle para alternar Unidad (Pastillas) */}
                   <div style={{ display: "flex", background: "#e9ecef", borderRadius: "4px", padding: "2px" }}>
                     <button
                       type="button"
@@ -412,7 +447,6 @@ function CrearCotizacion({ token }) {
                   <span>{formulario.unidadPeso}</span>
                 </div>
 
-                {/* Contenedores sugeridos */}
                 <div style={{ marginTop: "0.75rem", padding: "0.5rem", backgroundColor: "#f8f9fa", borderRadius: "4px", border: "1px solid #e9ecef" }}>
                   <small style={{ display: "block", color: "#6c757d", marginBottom: "0.25rem", fontWeight: "bold" }}>
                     Contenedores sugeridos:
@@ -427,7 +461,6 @@ function CrearCotizacion({ token }) {
                 {errores.weight && <span className="error">{errores.weight}</span>}
               </div>
 
-              {/* VALOR DE CARGA OPCIONAL */}
               <div className="field">
                 <label htmlFor="valorCarga">Valor de carga (Opcional)</label>
                 <input
@@ -440,6 +473,37 @@ function CrearCotizacion({ token }) {
                   onChange={manejarCambio}
                   placeholder="Ej: 50000"
                 />
+
+                {/* SELECTOR DE TASA DE ARANCEL (Visible solo si se ingresa valor de carga) */}
+                {formulario.valorCarga !== "" && !isNaN(Number(formulario.valorCarga)) && Number(formulario.valorCarga) > 0 && (
+                  <div style={{ marginTop: "0.75rem", padding: "0.5rem", backgroundColor: "#f8f9fa", borderRadius: "4px", border: "1px solid #e9ecef" }}>
+                    <label style={{ display: "block", fontSize: "0.85rem", color: "#495057", marginBottom: "0.3rem", fontWeight: "bold" }}>
+                      Tasa de Arancel Aduanero:
+                    </label>
+                    <div style={{ display: "flex", gap: "1.5rem" }}>
+                      <label style={{ fontWeight: "normal", cursor: "pointer", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                        <input
+                          type="radio"
+                          name="tasaArancel"
+                          value="6"
+                          checked={formulario.tasaArancel === "6"}
+                          onChange={manejarCambio}
+                        />
+                        6% (General)
+                      </label>
+                      <label style={{ fontWeight: "normal", cursor: "pointer", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                        <input
+                          type="radio"
+                          name="tasaArancel"
+                          value="0"
+                          checked={formulario.tasaArancel === "0"}
+                          onChange={manejarCambio}
+                        />
+                        0% (Exento)
+                      </label>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="field">
@@ -448,22 +512,22 @@ function CrearCotizacion({ token }) {
                   id="description"
                   name="description"
                   rows="5"
+                  maxLength={200}
                   value={formulario.description}
                   onChange={manejarCambio}
                   className={errores.description ? "input-error" : ""}
-                  placeholder="Describe brevemente la carga."
+                  placeholder="Describe brevemente la carga (máximo 200 caracteres)."
                   required
                 />
                 {errores.description && <span className="error">{errores.description}</span>}
               </div>
 
-              {/* Visualizador del Precio Estimado */}
               <div style={{ marginTop: "1rem", marginBottom: "1.5rem", padding: "0.75rem", backgroundColor: "#e7f5ff", borderRadius: "6px", border: "1px solid #74c0fc", textAlign: "center" }}>
                 <span style={{ display: "block", fontSize: "0.85rem", color: "#1c7ed6", fontWeight: "bold", textTransform: "uppercase" }}>
                   Precio Estimado del Envío:
                 </span>
                 <span style={{ fontSize: "1.2rem", fontWeight: "bold", color: "#212529" }}>
-                  ${precioEstimado.min.toLocaleString()} USD — ${precioEstimado.max.toLocaleString()} USD
+                  ${Math.round(precioEstimado.min).toLocaleString()} USD — ${Math.round(precioEstimado.max).toLocaleString()} USD
                 </span>
               </div>
             </div>

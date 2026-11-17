@@ -99,6 +99,7 @@ function Register() {
             <input
               id="username"
               type="text"
+              maxLength={50}
               value={username}
               onChange={(e) => {
                 setUsername(e.target.value);
@@ -108,7 +109,7 @@ function Register() {
               required
             />
             {usernameTieneNumeros && (
-              <p style={{ color: "#dc2626", fontSize: "0.85rem", marginTop: "0.4rem", marginBotom: 0 }}>
+              <p style={{ color: "#dc2626", fontSize: "0.85rem", marginTop: "0.4rem", marginBottom: 0 }}>
                 El nombre de usuario no puede contener números.
               </p>
             )}
@@ -119,6 +120,7 @@ function Register() {
             <input
               id="password"
               type="password"
+              maxLength={50}
               value={password}
               onChange={(e) => {
                 setPassword(e.target.value);

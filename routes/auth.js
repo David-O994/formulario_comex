@@ -45,6 +45,12 @@ router.post(
 
       const nombreUsuario = username.trim();
 
+      if (nombreUsuario.length > 50 || password.length > 50) {
+        return res.status(400).json({
+          error: 'El nombre de usuario y la contraseña no pueden superar los 50 caracteres.'
+        });
+      }
+
       const passwordRegex = /^(?=.*\d)(?=.*[^A-Za-z0-9\s])\S{8,}$/;
 
       if (!passwordRegex.test(password)) {
