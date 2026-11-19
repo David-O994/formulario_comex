@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
-function Register() {
+function Register({ user, token, onLogout }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -39,13 +39,13 @@ function Register() {
 
     try {
       setEnviando(true);
-      const token = localStorage.getItem("token"); // Obtenemos el token directamente del almacenamiento local
+      const authToken = token || localStorage.getItem("token");
 
       const respuesta = await fetch("http://localhost:3000/api/auth/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`, // Requerido por el middleware de admin
+          Authorization: `Bearer ${authToken}`, // Requerido por el middleware de admin
         },
         body: JSON.stringify({ username: username.trim(), password }),
       });
@@ -68,89 +68,177 @@ function Register() {
     }
   };
 
+  const estaAutenticado = Boolean(token && user);
+
   return (
-    <main 
-      className="dashboard-page" 
-      style={{ 
-        padding: "2rem", 
-        display: "flex", 
-        flexDirection: "column", 
-        alignItems: "center", 
-        justifyContent: "center" 
-      }}
-    >
-      <div style={{ width: "100%", maxWidth: "600px", marginBottom: "1rem" }}>
-        <Link 
-          to="/" 
-          className="button-back" 
-          style={{ textDecoration: "none", display: "inline-block" }}
-        >
-          ← Volver al dashboard
-        </Link>
-      </div>
-      
-      <section className="form-container" style={{ width: "100%", maxWidth: "600px" }}>
-        <form onSubmit={handleSubmit}>
-          <h2>Crear Nuevo Usuario</h2>
-          <p className="step-description">Registra un nuevo usuario con rol estándar en el sistema.</p>
-
-          <div className="field" style={{ marginBottom: "1.5rem" }}>
-            <label htmlFor="username">Usuario <span>*</span></label>
-            <input
-              id="username"
-              type="text"
-              maxLength={50}
-              value={username}
-              onChange={(e) => {
-                setUsername(e.target.value);
-                setError("");
-              }}
-              autoComplete="username"
-              required
-            />
-            {usernameTieneNumeros && (
-              <p style={{ color: "#dc2626", fontSize: "0.85rem", marginTop: "0.4rem", marginBottom: 0 }}>
-                El nombre de usuario no puede contener números.
-              </p>
-            )}
-          </div>
-
-          <div className="field" style={{ marginBottom: "1.5rem" }}>
-            <label htmlFor="password">Contraseña <span>*</span></label>
-            <input
-              id="password"
-              type="password"
-              maxLength={50}
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                setError("");
-              }}
-              autoComplete="new-password"
-              aria-describedby="password-requirements"
-              required
-            />
-
-            <ul id="password-requirements" style={{ marginTop: "0.75rem", fontSize: "0.85rem", listStyle: "none", padding: 0, display: "flex", flexDirection: "column", gap: "4px" }}>
-              <li style={{ color: tieneLongitud ? "#2b8a3e" : "#6c757d" }}>{tieneLongitud ? "✓" : "○"} Mínimo 8 caracteres</li>
-              <li style={{ color: tieneNumero ? "#2b8a3e" : "#6c757d" }}>{tieneNumero ? "✓" : "○"} Al menos un número</li>
-              <li style={{ color: tieneEspecial ? "#2b8a3e" : "#6c757d" }}>{tieneEspecial ? "✓" : "○"} Al menos un carácter especial</li>
-            </ul>
-          </div>
-
-          {error && <p role="alert" style={{ color: "#dc2626", fontSize: "0.9rem", marginBottom: "1rem" }}>{error}</p>}
-
-          <button 
-            type="submit" 
-            className="button primary"
-            disabled={!passwordValida || !usernameValido || enviando}
-            style={{ width: "100%" }}
+    <div className="dashboard-page" style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      {/* HEADER UNIFICADO */}
+      <header className="dashboard-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+        <nav style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
+          <a 
+            href="https://www.cintac.cl/" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            style={{ display: "flex", alignItems: "center", textDecoration: "none" }}
           >
-            {enviando ? "Creando..." : "Crear cuenta"}
-          </button>
-        </form>
-      </section>
-    </main>
+            <img 
+              src="/cintac_logo.png" 
+              alt="Logo CINTAC" 
+              style={{ height: "28px", width: "auto", objectFit: "contain" }} 
+            />
+          </a>
+          <span>|</span>
+          <Link to="/" style={{ textDecoration: "none", color: "#fa8a0e", fontWeight: "600" }}>
+            Inicio
+          </Link>
+
+          {/* Opciones exclusivas para ADMINISTRADOR */}
+          {estaAutenticado && user?.role === "admin" && (
+            <>
+              <span>|</span>
+              <Link to="/admin/crear-usuario" style={{ textDecoration: "none" }}>
+                Crear usuario
+              </Link>
+              <span>|</span>
+              <Link to="/cotizaciones/crear" style={{ textDecoration: "none" }}>
+                Cotizar
+              </Link>
+              <span>|</span>
+              <Link to="/admin/lista-usuarios" style={{ textDecoration: "none" }}>
+                Lista usuarios
+              </Link>
+              <span>|</span>
+              <Link to="/mis-cotizaciones" style={{ textDecoration: "none" }}>
+                Mis cotizaciones
+              </Link>
+              <span>|</span>
+              <Link to="/admin/historial" style={{ textDecoration: "none" }}>
+                Historial cotizaciones
+              </Link>
+              <span>|</span>
+              <Link to="/cotizador" style={{ textDecoration: "none" }}>
+                Excel
+              </Link>
+            </>
+          )}
+        </nav>
+
+        <div className="header-actions" style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+          {estaAutenticado && (
+            <>
+              <span className="user-greeting">
+                {user.username}
+              </span>
+
+              <button
+                type="button"
+                className="button-logout"
+                onClick={() => {
+                  onLogout();
+                  window.location.href = "/";
+                }}
+              >
+                Cerrar sesión
+              </button>
+            </>
+          )}
+        </div>
+      </header>
+
+      {/* CONTENIDO PRINCIPAL DEL FORMULARIO */}
+      <main 
+        className="dashboard-main-wrapper" 
+        style={{ 
+          flex: 1,
+          padding: "2rem", 
+          display: "flex", 
+          flexDirection: "column", 
+          alignItems: "center", 
+          justifyContent: "center" 
+        }}
+      >
+        <section className="form-container" style={{ width: "100%", maxWidth: "600px" }}>
+          <form onSubmit={handleSubmit}>
+            {/* ENCABEZADO CON FONDO NARANJA */}
+            <div className="form-card-header">
+              <h2>Nuevo Usuario</h2>
+              <p className="step-description">Registrar un nuevo usuario con rol estándar en el sistema.</p>
+            </div>
+
+            <div className="field" style={{ marginBottom: "1.5rem" }}>
+              <label htmlFor="username" style={{ textAlign: "left" }}>Usuario <span>(*)</span></label>
+              <input
+                id="username"
+                type="text"
+                maxLength={50}
+                value={username}
+                onChange={(e) => {
+                  setUsername(e.target.value);
+                  setError("");
+                }}
+                autoComplete="username"
+                required
+              />
+              {usernameTieneNumeros && (
+                <p style={{ color: "#dc2626", fontSize: "0.85rem", fontWeight: "bold", marginTop: "0.4rem", marginBottom: 0, textAlign: "center" }}>
+                  El nombre de usuario no puede contener números.
+                </p>
+              )}
+            </div>
+
+            <div className="field" style={{ marginBottom: "1.5rem" }}>
+              <label htmlFor="password" style={{ textAlign: "left" }}>Contraseña <span>(*)</span></label>
+              <input
+                id="password"
+                type="password"
+                maxLength={50}
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setError("");
+                }}
+                autoComplete="new-password"
+                aria-describedby="password-requirements"
+                required
+              />
+
+              <ul id="password-requirements" className="password-requirements">
+                <li className={`password-requirement-item ${tieneLongitud ? "valid" : ""}`}>
+                  {tieneLongitud ? "✓" : "○"} Mínimo 8 caracteres
+                </li>
+                <li className={`password-requirement-item ${tieneNumero ? "valid" : ""}`}>
+                  {tieneNumero ? "✓" : "○"} Al menos un número
+                </li>
+                <li className={`password-requirement-item ${tieneEspecial ? "valid" : ""}`}>
+                  {tieneEspecial ? "✓" : "○"} Al menos un carácter especial
+                </li>
+              </ul>
+            </div>
+
+            {error && <p role="alert" style={{ color: "#dc2626", fontSize: "0.9rem", marginBottom: "1rem", textAlign: "center" }}>{error}</p>}
+
+            {/* CONTENEDOR DE ACCIONES */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "1.5rem" }}>
+              <button 
+                type="submit" 
+                disabled={!passwordValida || !usernameValido || enviando}
+                className="button-primary-blue"
+              >
+                {enviando ? "Creando..." : "Crear cuenta"}
+              </button>
+
+              <Link 
+                to="/" 
+                className="button-back" 
+                style={{ textDecoration: "none", textAlign: "center", width: "100%", boxSizing: "border-box", display: "block" }}
+              >
+                Volver al dashboard
+              </Link>
+            </div>
+          </form>
+        </section>
+      </main>
+    </div>
   );
 }
 

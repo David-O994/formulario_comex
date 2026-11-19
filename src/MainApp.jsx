@@ -80,16 +80,20 @@ function MainApp({ user, token, onLogout, forcedView }) {
 
   return (
     <main className="dashboard-page">
-      <header className="dashboard-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+      <header className="dashboard-header">
         {/* Navegación y opciones del menú */}
         <nav style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
           <a 
             href="https://www.cintac.cl/" 
             target="_blank" 
             rel="noopener noreferrer" 
-            style={{ fontWeight: "bold", textDecoration: "none", color: "inherit" }}
+            style={{ display: "flex", alignItems: "center", textDecoration: "none" }}
           >
-            CINTAC
+            <img 
+              src="/cintac_logo.png" 
+              alt="Logo CINTAC" 
+              style={{ height: "28px", width: "auto", objectFit: "contain" }} 
+            />
           </a>
           <span>|</span>
           <Link to="/" style={{ textDecoration: "none" }}>
@@ -126,11 +130,15 @@ function MainApp({ user, token, onLogout, forcedView }) {
                 Lista usuarios
               </Link>
               <span>|</span>
+              <Link to="/mis-cotizaciones" style={{ textDecoration: "none" }}>
+                Mis cotizaciones
+              </Link>
+              <span>|</span>
               <Link to="/admin/historial" style={{ textDecoration: "none" }}>
                 Historial cotizaciones
               </Link>
               <span>|</span>
-              <Link to="/admin/historial" style={{ textDecoration: "none" }}>
+              <Link to="/cotizador" style={{ textDecoration: "none" }}>
                 Excel
               </Link>
             </>
@@ -142,7 +150,7 @@ function MainApp({ user, token, onLogout, forcedView }) {
           {estaAutenticado && (
             <>
               <span className="user-greeting">
-                Hola, {user.username}
+                {user.username}
               </span>
 
               <button
@@ -159,235 +167,274 @@ function MainApp({ user, token, onLogout, forcedView }) {
           )}
         </div>
       </header>
-
-      <div className="dashboard-content">
-        {/* VISTA DE LISTADO DE USUARIOS (Solo Admin) */}
-        {forcedView === "lista-usuarios" && esAdmin ? (
-          <section className="dashboard-panel history-panel">
-            <Link to="/" className="button-back" style={{ textDecoration: "none", display: "inline-block", marginBottom: "1rem" }}>
-              ← Volver al dashboard
-            </Link>
-
-            <h1>Listado de usuarios</h1>
-
-            {loadingData && <p>Cargando usuarios...</p>}
-
-            {!loadingData && dataList.length === 0 && (
-              <p>No hay usuarios para mostrar.</p>
-            )}
-
-            {!loadingData && dataList.length > 0 && (
-              <div className="table-container">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>Nombre</th>
-                      <th>Rol</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dataList.map((u) => (
-                      <tr key={u._id}>
-                        <td>{u._id}</td>
-                        <td>{u.username}</td>
-                        <td>{u.role}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+      <div className="dashboard-main-wrapper">
+        <main 
+          className="dashboard-content"
+          style={
+            forcedView === "lista-usuarios" || forcedView === "historial" || forcedView === "mis-cotizaciones"
+              ? { background: "transparent", boxShadow: "none", border: "none", padding: 0, display: "flex", justifyContent: "center" }
+              : {}
+          }
+        >
+          {/* VISTA DE LISTADO DE USUARIOS (Solo Admin) */}
+          {forcedView === "lista-usuarios" && esAdmin ? (
+            <section className="form-container" style={{ width: "100%", maxWidth: "850px", padding: 0, overflow: "hidden" }}>
+              <div className="form-card-header" style={{ margin: 0, borderRadius: 0 }}>
+                <h2>Listado de usuarios</h2>
+                <p className="step-description">Visualiza y administra los usuarios registrados en el sistema.</p>
               </div>
-            )}
-          </section>
-        ) : /* VISTA DE HISTORIAL (Admin o Usuario según corresponda) */
-        (forcedView === "historial" && esAdmin) || (forcedView === "mis-cotizaciones" && (esUsuario || esAdmin)) ? (
-          <section className="dashboard-panel history-panel">
-            <Link to="/" className="button-back" style={{ textDecoration: "none", display: "inline-block", marginBottom: "1rem" }}>
-              ← Volver al dashboard
-            </Link>
 
-            <h1>{esAdmin && forcedView === "historial" ? "Historial de cotizaciones" : "Mi historial de cotizaciones"}</h1>
+              <div style={{ padding: "30px" }}>
+                {loadingData && <p style={{ textAlign: "center", padding: "1rem" }}>Cargando usuarios...</p>}
 
-            {loadingData && <p>Cargando cotizaciones...</p>}
+                {!loadingData && dataList.length === 0 && (
+                  <p style={{ textAlign: "center", padding: "1rem" }}>No hay usuarios para mostrar.</p>
+                )}
 
-            {!loadingData && dataList.length === 0 && (
-              <p>No hay cotizaciones para mostrar.</p>
-            )}
+                {!loadingData && dataList.length > 0 && (
+                  <div className="table-container" style={{ overflowX: "auto", marginBottom: "1.5rem" }}>
+                    <table className="custom-table" border="1" cellPadding="8" cellSpacing="0" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                      <thead>
+                        <tr>
+                          <th>ID</th>
+                          <th>Nombre</th>
+                          <th>Rol</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dataList.map((u) => (
+                          <tr key={u._id}>
+                            <td><code>{u._id}</code></td>
+                            <td>{u.username}</td>
+                            <td>{u.role}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
 
-            {!loadingData && dataList.length > 0 && (
-              <div className="table-container">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Origen</th>
-                      <th>Destino</th>
-                      <th>Días Tránsito</th>
-                      <th>Peso (t)</th>
-                      <th>Contenedores</th>
-                      <th>Tarifa Est. (USD)</th>
-                      <th>Valor Carga</th>
-                      <th>Descripción</th>
-                      <th>Precio</th>
-                      <th>Fecha</th>
-                      {esAdmin && forcedView === "historial" && <th>Usuario</th>}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dataList.map((q) => (
-                      <tr key={q._id}>
-                        <td>{q.origen}</td>
-                        <td>{q.destino}</td>
-                        <td>
-                          {q.transito 
-                            ? `${q.transito.minDias} - ${q.transito.maxDias} días` 
-                            : (q.days !== undefined ? `${q.days} días` : "—")}
-                        </td>
-                        <td>{q.weight} t</td>
-                        <td>{q.contenedores ?? "—"}</td>
-                        <td>
-                          {q.tarifas 
-                            ? `$${q.tarifas.min?.toLocaleString()} - $${q.tarifas.max?.toLocaleString()}` 
-                            : (q.cost ? `$${q.cost.toLocaleString()}` : "—")}
-                        </td>
-                        <td>{q.valorCarga ? `$${q.valorCarga.toLocaleString()}` : "—"}</td>
-                        <td>{q.description}</td>
-                        <td>
-                          {q.precioCLP && q.precioCLP.min !== undefined && q.precioCLP.max !== undefined
-                            ? (q.precioCLP.min === q.precioCLP.max
-                                ? `$${Math.round(q.precioCLP.min).toLocaleString('es-CL')} CLP`
-                                : `$${Math.round(q.precioCLP.min).toLocaleString('es-CL')} - $${Math.round(q.precioCLP.max).toLocaleString('es-CL')} CLP`)
-                            : "—"}
-                        </td>
-                        <td>
-                          {q.createdAt
-                            ? new Date(q.createdAt).toLocaleDateString("es-CL")
-                            : "—"}
-                        </td>
-                        {esAdmin && forcedView === "historial" && <td>{q.userId?.username ?? "—"}</td>}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div style={{ marginTop: "2rem" }}>
+                  <Link 
+                    to="/" 
+                    className="button-back" 
+                    style={{ textDecoration: "none", textAlign: "center", width: "100%", boxSizing: "border-box", display: "block" }}
+                  >
+                    Volver al dashboard
+                  </Link>
+                </div>
               </div>
-            )}
-          </section>
-        ) : (
-          /* VISTA NORMAL DE LAS TARJETAS DEL DASHBOARD (INICIO) */
-          <>
-            <section className="dashboard-intro">
-              <p className="dashboard-eyebrow">PANEL PRINCIPAL</p>
-
-              <h1>
-                {estaAutenticado
-                  ? `Bienvenido, ${user.username}`
-                  : "Bienvenido"}
-              </h1>
-
-              <p>
-                {esAdmin
-                  ? "Administra los usuarios y consulta las cotizaciones."
-                  : esUsuario
-                    ? "Gestiona tus envíos y crea nuevas cotizaciones."
-                    : "Inicia sesión para acceder a las opciones disponibles."}
-              </p>
             </section>
+          ) : /* VISTA DE HISTORIAL (Admin o Usuario según corresponda) */
+          (forcedView === "historial" && esAdmin) || (forcedView === "mis-cotizaciones" && (esUsuario || esAdmin)) ? (
+            <section className="form-container" style={{ width: "100%", maxWidth: "1100px", padding: 0, overflow: "hidden" }}>
+              <div className="form-card-header" style={{ margin: 0, borderRadius: 0 }}>
+                <h2>{esAdmin && forcedView === "historial" ? "Historial de cotizaciones" : "Mi historial de cotizaciones"}</h2>
+                <p className="step-description">Revisa el registro detallado de las cotizaciones realizadas en el sistema.</p>
+              </div>
 
-            <section className="dashboard-cards">
-              {!estaAutenticado && (
-                <Link to="/login" className="dashboard-card" style={{ textDecoration: "none" }}>
-                  <span className="dashboard-card-icon">↪</span>
-                  <h2>Iniciar sesión</h2>
-                  <p>Accede a tu cuenta para continuar.</p>
-                  <span className="dashboard-card-link">
-                    Ingresar →
-                  </span>
-                </Link>
-              )}
+              <div style={{ padding: "30px" }}>
+                {loadingData && <p style={{ textAlign: "center", padding: "1rem" }}>Cargando cotizaciones...</p>}
 
-              {esAdmin && (
-                <>
-                  {/* Fila 1: Crear usuario | Crear cotización | Módulo Cotizador */}
-                  <Link to="/admin/crear-usuario" className="dashboard-card" style={{ textDecoration: "none" }}>
-                    <span className="dashboard-card-icon">＋</span>
-                    <h2>Crear usuario</h2>
-                    <p>Registra una nueva cuenta de usuario.</p>
-                    <span className="dashboard-card-link">
-                      Crear usuario →
-                    </span>
+                {!loadingData && dataList.length === 0 && (
+                  <p style={{ textAlign: "center", padding: "1rem" }}>No hay cotizaciones para mostrar.</p>
+                )}
+
+                {!loadingData && dataList.length > 0 && (
+                  <div className="table-container" style={{ overflowX: "auto", marginBottom: "1.5rem" }}>
+                    <table className="custom-table" border="1" cellPadding="8" cellSpacing="0" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                      <thead>
+                        <tr>
+                          <th>Origen</th>
+                          <th>Destino</th>
+                          <th>Días Tránsito</th>
+                          <th>Peso (t)</th>
+                          <th>Contenedores</th>
+                          <th>Tarifa Est. (USD)</th>
+                          <th>Valor Carga</th>
+                          <th>Descripción</th>
+                          <th>Precio</th>
+                          <th>Fecha</th>
+                          {esAdmin && forcedView === "historial" && <th>Usuario</th>}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dataList.map((q) => (
+                          <tr key={q._id}>
+                            <td>{q.origen}</td>
+                            <td>{q.destino}</td>
+                            <td>
+                              {q.transito 
+                                ? `${q.transito.minDias} - ${q.transito.maxDias} días` 
+                                : (q.days !== undefined ? `${q.days} días` : "—")}
+                            </td>
+                            <td>{q.weight} t</td>
+                            <td>{q.contenedores ?? "—"}</td>
+                            <td>
+                              {q.tarifas 
+                                ? `$${q.tarifas.min?.toLocaleString()} - $${q.tarifas.max?.toLocaleString()}` 
+                                : (q.cost ? `$${q.cost.toLocaleString()}` : "—")}
+                            </td>
+                            <td>{q.valorCarga ? `$${q.valorCarga.toLocaleString()}` : "—"}</td>
+                            <td>{q.description}</td>
+                            <td>
+                              {q.precioCLP && q.precioCLP.min !== undefined && q.precioCLP.max !== undefined
+                                ? (q.precioCLP.min === q.precioCLP.max
+                                    ? `$${Math.round(q.precioCLP.min).toLocaleString('es-CL')} CLP`
+                                    : `$${Math.round(q.precioCLP.min).toLocaleString('es-CL')} - $${Math.round(q.precioCLP.max).toLocaleString('es-CL')} CLP`)
+                                : "—"}
+                            </td>
+                            <td>
+                              {q.createdAt
+                                ? new Date(q.createdAt).toLocaleDateString("es-CL")
+                                : "—"}
+                            </td>
+                            {esAdmin && forcedView === "historial" && <td>{q.userId?.username ?? "—"}</td>}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                <div style={{ marginTop: "2rem" }}>
+                  <Link 
+                    to="/" 
+                    className="button-back" 
+                    style={{ textDecoration: "none", textAlign: "center", width: "100%", boxSizing: "border-box", display: "block" }}
+                  >
+                    Volver al dashboard
                   </Link>
-
-                  <Link to="/cotizaciones/crear" className="dashboard-card" style={{ textDecoration: "none" }}>
-                    <span className="dashboard-card-icon">＋</span>
-                    <h2>Crear cotización</h2>
-                    <p>Completa los datos de tu próximo envío.</p>
-                    <span className="dashboard-card-link">
-                      Crear cotización →
-                    </span>
-                  </Link>
-
-                  <Link to="/cotizador" className="dashboard-card" style={{ textDecoration: "none" }}>
-                    <span className="dashboard-card-icon">📊</span>
-                    <h2>Módulo Cotizador</h2>
-                    <p>Sube y gestiona las tarifas desde Excel.</p>
-                    <span className="dashboard-card-link">
-                      Ir al cotizador →
-                    </span>
-                  </Link>
-
-                  {/* Fila 2: Listado de usuarios | Mis cotizaciones | Historial de cotizaciones */}
-                  <Link to="/admin/lista-usuarios" className="dashboard-card" style={{ textDecoration: "none" }}>
-                    <span className="dashboard-card-icon">👥</span>
-                    <h2>Listado de usuarios</h2>
-                    <p>Consulta los usuarios registrados en el sistema.</p>
-                    <span className="dashboard-card-link">
-                      Ver usuarios →
-                    </span>
-                  </Link>
-
-                  <Link to="/mis-cotizaciones" className="dashboard-card" style={{ textDecoration: "none" }}>
-                    <span className="dashboard-card-icon">📋</span>
-                    <h2>Mis cotizaciones</h2>
-                    <p>Revisa el historial de tus envíos realizados.</p>
-                    <span className="dashboard-card-link">
-                      Ver mi historial →
-                    </span>
-                  </Link>
-
-                  <Link to="/admin/historial" className="dashboard-card" style={{ textDecoration: "none" }}>
-                    <span className="dashboard-card-icon">▤</span>
-                    <h2>Historial de cotizaciones</h2>
-                    <p>Consulta las cotizaciones disponibles.</p>
-                    <span className="dashboard-card-link">
-                      Ver historial →
-                    </span>
-                  </Link>
-                </>
-              )}
-
-              {esUsuario && (
-                <>
-                  <Link to="/cotizaciones/crear" className="dashboard-card" style={{ textDecoration: "none" }}>
-                    <span className="dashboard-card-icon">＋</span>
-                    <h2>Crear cotización</h2>
-                    <p>Completa los datos de tu próximo envío.</p>
-                    <span className="dashboard-card-link">
-                      Crear cotización →
-                    </span>
-                  </Link>
-
-                  <Link to="/mis-cotizaciones" className="dashboard-card" style={{ textDecoration: "none" }}>
-                    <span className="dashboard-card-icon">📋</span>
-                    <h2>Mis cotizaciones</h2>
-                    <p>Revisa el historial de tus envíos realizados.</p>
-                    <span className="dashboard-card-link">
-                      Ver mi historial →
-                    </span>
-                  </Link>
-                </>
-              )}
+                </div>
+              </div>
             </section>
-          </>
-        )}
+          ) : (
+            /* VISTA NORMAL DE LAS TARJETAS DEL DASHBOARD (INICIO) */
+            <>
+              <section className="dashboard-intro">
+                <p className="dashboard-eyebrow">PANEL PRINCIPAL</p>
+
+                <h1>
+                  {estaAutenticado
+                    ? `Bienvenido, ${user.username}`
+                    : "Bienvenido"}
+                </h1>
+
+                <p>
+                  {esAdmin
+                    ? "Administra los usuarios y consulta las cotizaciones."
+                    : esUsuario
+                      ? "Gestiona tus envíos y crea nuevas cotizaciones."
+                      : "Inicia sesión para acceder a las opciones disponibles."}
+                </p>
+              </section>
+
+              <section 
+  className="dashboard-cards" 
+  style={{ 
+    display: "grid", 
+    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+    maxWidth: "1050px",
+    margin: "0 auto",
+    gap: "1.5rem"
+  }}
+>
+  {!estaAutenticado && (
+    <Link to="/login" className="dashboard-card" style={{ textDecoration: "none" }}>
+      <span className="dashboard-card-icon">↪</span>
+      <h2>Iniciar sesión</h2>
+      <p>Accede a tu cuenta para continuar.</p>
+      <span className="dashboard-card-link">
+        Ingresar →
+      </span>
+    </Link>
+  )}
+
+  {esAdmin && (
+    <>
+      {/* FILA 1: Crear usuario | Crear cotización | Módulo Cotizador */}
+      <Link to="/admin/crear-usuario" className="dashboard-card" style={{ textDecoration: "none" }}>
+        <span className="dashboard-card-icon">＋</span>
+        <h2>Crear usuario</h2>
+        <p>Registra una nueva cuenta de usuario.</p>
+        <span className="dashboard-card-link">
+          Crear usuario →
+        </span>
+      </Link>
+
+      <Link to="/cotizaciones/crear" className="dashboard-card" style={{ textDecoration: "none" }}>
+        <span className="dashboard-card-icon">＋</span>
+        <h2>Crear cotización</h2>
+        <p>Completa los datos de tu próximo envío.</p>
+        <span className="dashboard-card-link">
+          Crear cotización →
+        </span>
+      </Link>
+
+      <Link to="/cotizador" className="dashboard-card" style={{ textDecoration: "none" }}>
+        <span className="dashboard-card-icon">📊</span>
+        <h2>Módulo Cotizador</h2>
+        <p>Sube y gestiona las tarifas desde Excel.</p>
+        <span className="dashboard-card-link">
+          Ir al cotizador →
+        </span>
+      </Link>
+
+      {/* FILA 2: Listado de usuarios | Mis cotizaciones | Historial de cotizaciones */}
+      <Link to="/admin/lista-usuarios" className="dashboard-card" style={{ textDecoration: "none" }}>
+        <span className="dashboard-card-icon">👥</span>
+        <h2>Listado de usuarios</h2>
+        <p>Consulta los usuarios registrados en el sistema.</p>
+        <span className="dashboard-card-link">
+          Ver usuarios →
+        </span>
+      </Link>
+
+      <Link to="/mis-cotizaciones" className="dashboard-card" style={{ textDecoration: "none" }}>
+        <span className="dashboard-card-icon">📋</span>
+        <h2>Mis cotizaciones</h2>
+        <p>Revisa el historial de tus envíos realizados.</p>
+        <span className="dashboard-card-link">
+          Ver mi historial →
+        </span>
+      </Link>
+
+      <Link to="/admin/historial" className="dashboard-card" style={{ textDecoration: "none" }}>
+        <span className="dashboard-card-icon">▤</span>
+        <h2>Historial de cotizaciones</h2>
+        <p>Consulta las cotizaciones disponibles.</p>
+        <span className="dashboard-card-link">
+          Ver historial →
+        </span>
+      </Link>
+    </>
+  )}
+
+  {esUsuario && (
+    <>
+      <Link to="/cotizaciones/crear" className="dashboard-card" style={{ textDecoration: "none" }}>
+        <span className="dashboard-card-icon">＋</span>
+        <h2>Crear cotización</h2>
+        <p>Completa los datos de tu próximo envío.</p>
+        <span className="dashboard-card-link">
+          Crear cotización →
+        </span>
+      </Link>
+
+      <Link to="/mis-cotizaciones" className="dashboard-card" style={{ textDecoration: "none" }}>
+        <span className="dashboard-card-icon">📋</span>
+        <h2>Mis cotizaciones</h2>
+        <p>Revisa el historial de tus envíos realizados.</p>
+        <span className="dashboard-card-link">
+          Ver mi historial →
+        </span>
+      </Link>
+    </>
+  )}
+</section>
+            </>
+          )}
+        </main>
       </div>
     </main>
   );

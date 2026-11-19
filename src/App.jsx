@@ -50,7 +50,7 @@ function App() {
           path="/cotizador" 
           element={
             user?.role === "admin" ? (
-              <Cotizador />
+              <Cotizador user={user} token={token} onLogout={handleLogout} />
             ) : (
               <Navigate to="/" />
             )
@@ -62,7 +62,7 @@ function App() {
           path="/admin/crear-usuario" 
           element={
             user?.role === "admin" ? (
-              <Register token={token} />
+              <Register user={user} token={token} onLogout={handleLogout} />
             ) : (
               <Navigate to="/" />
             )
@@ -98,7 +98,7 @@ function App() {
           path="/cotizaciones/crear" 
           element={
             user?.role === "usuario" || user?.role === "admin" ? (
-              <CrearCotizacion token={token} />
+              <CrearCotizacion user={user} token={token} onLogout={handleLogout} />
             ) : (
               <Navigate to="/" />
             )

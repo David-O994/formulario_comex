@@ -12,7 +12,7 @@ const formularioInicial = {
   description: "",
 };
 
-function CrearCotizacion({ token }) {
+function CrearCotizacion({ user, token, onLogout }) {
   const [paso, setPaso] = useState(1);
   const [formulario, setFormulario] = useState(formularioInicial);
   const [errores, setErrores] = useState({});
@@ -55,14 +55,12 @@ function CrearCotizacion({ token }) {
     (t) => t.origen === formulario.origin && t.destino === formulario.destination
   );
 
-  // Obtener siempre el peso en kilogramos para la lógica de contenedores
   const obtenerPesoEnKg = () => {
     const valor = parseFloat(formulario.weight);
     if (isNaN(valor) || valor <= 0) return 0;
     return formulario.unidadPeso === "t" ? valor * 1000 : valor;
   };
 
-  // Función para calcular contenedores optimizada
   const calcularContenedores = () => {
     const kg = obtenerPesoEnKg();
     if (kg <= 0) return [{ tipo: "20'", cantidad: 1 }];
@@ -112,7 +110,6 @@ function CrearCotizacion({ token }) {
   const contenedoresSugeridos = calcularContenedores();
   const totalContenedores = contenedoresSugeridos.reduce((acc, c) => acc + c.cantidad, 0);
 
-  // Función para calcular el precio total aplicando las fórmulas de flete, CIF, arancel e IVA
   const calcularPrecioTotal = () => {
     if (!rutaSeleccionada || !rutaSeleccionada.tarifas) return { min: 0, max: 0 };
 
@@ -143,7 +140,6 @@ function CrearCotizacion({ token }) {
 
     const tasaArancel = formulario.tasaArancel === "0" ? 0 : 0.06;
 
-    // Fórmulas aplicadas con o sin arancel según la selección
     const calcularTotalConTributos = (flete) => {
       const cif = flete + valorCargaNum;
       const arancel = cif * tasaArancel;
@@ -305,254 +301,360 @@ function CrearCotizacion({ token }) {
     }
   };
 
+  const estaAutenticado = Boolean(token && user);
+
   return (
-    <main className="page" style={{ padding: "2rem", display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <div style={{ width: "100%", maxWidth: "600px", marginBottom: "1rem" }}>
-        <Link to="/" className="button-back" style={{ textDecoration: "none", display: "inline-block" }}>
-          ← Volver al dashboard
-        </Link>
-      </div>
+    <div className="dashboard-page" style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      {/* HEADER UNIFICADO */}
+      <header className="dashboard-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+        <nav style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
+          <a 
+            href="https://www.cintac.cl/" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            style={{ display: "flex", alignItems: "center", textDecoration: "none" }}
+          >
+            <img 
+              src="/cintac_logo.png" 
+              alt="Logo CINTAC" 
+              style={{ height: "28px", width: "auto", objectFit: "contain" }} 
+            />
+          </a>
+          <span>|</span>
+          <Link to="/" style={{ textDecoration: "none", color: "#fa8a0e", fontWeight: "600" }}>
+            Inicio
+          </Link>
 
-      <section className="form-container" style={{ width: "100%", maxWidth: "600px" }}>
-        <header className="form-header">
-          <h1>Cotiza tu Envío</h1>
-
-          <div className="steps">
-            {[1, 2].map((numeroPaso) => (
-              <div
-                key={numeroPaso}
-                className={`step ${numeroPaso === paso ? "active" : ""} ${numeroPaso < paso ? "completed" : ""}`}
-              >
-                <span>{numeroPaso}</span>
-                <small>{numeroPaso === 1 ? "Ruta" : "Carga"}</small>
-              </div>
-            ))}
-          </div>
-        </header>
-
-        <form onSubmit={manejarEnvio}>
-          {paso === 1 && (
-            <div className="form-step">
-              <h2>Información del envío</h2>
-              <p className="step-description">Indica desde dónde y hacia dónde quieres realizar tu envío.</p>
-
-              {cargandoTarifas ? (
-                <p>Cargando rutas disponibles desde la base de datos...</p>
-              ) : (
-                <>
-                  <div className="field">
-                    <label htmlFor="origin">Selecciona origen <span>*</span></label>
-                    <select
-                      id="origin"
-                      name="origin"
-                      value={formulario.origin}
-                      onChange={manejarCambio}
-                      className={errores.origin ? "input-error" : ""}
-                      required
-                    >
-                      <option value="">Selecciona un origen</option>
-                      {origenesDisponibles.map((origen) => (
-                        <option key={origen} value={origen}>{origen}</option>
-                      ))}
-                    </select>
-                    {errores.origin && <span className="error">{errores.origin}</span>}
-                  </div>
-
-                  <div className="field">
-                    <label htmlFor="destination">Selecciona destino <span>*</span></label>
-                    <select
-                      id="destination"
-                      name="destination"
-                      value={formulario.destination}
-                      onChange={manejarCambio}
-                      className={errores.destination ? "input-error" : ""}
-                      disabled={!formulario.origin}
-                      required
-                    >
-                      <option value="">Selecciona un destino</option>
-                      {destinosDisponibles.map((destino) => (
-                        <option key={destino} value={destino}>{destino}</option>
-                      ))}
-                    </select>
-
-                    {rutaSeleccionada && (
-                      <p className="transit-days" style={{ marginTop: "0.5rem", fontWeight: "bold", color: "#333" }}>
-                        Días en tránsito: {rutaSeleccionada.transito?.minDias} (mínimo) - {rutaSeleccionada.transito?.maxDias} (máximo)
-                      </p>
-                    )}
-
-                    {errores.destination && <span className="error">{errores.destination}</span>}
-                  </div>
-                </>
-              )}
-            </div>
+          {estaAutenticado && user?.role === "admin" && (
+            <>
+              <span>|</span>
+              <Link to="/admin/crear-usuario" style={{ textDecoration: "none" }}>
+                Crear usuario
+              </Link>
+              <span>|</span>
+              <Link to="/cotizaciones/crear" style={{ textDecoration: "none" }}>
+                Cotizar
+              </Link>
+              <span>|</span>
+              <Link to="/admin/lista-usuarios" style={{ textDecoration: "none" }}>
+                Lista usuarios
+              </Link>
+              <span>|</span>
+              <Link to="/mis-cotizaciones" style={{ textDecoration: "none" }}>
+                Mis cotizaciones
+              </Link>
+              <span>|</span>
+              <Link to="/admin/historial" style={{ textDecoration: "none" }}>
+                Historial cotizaciones
+              </Link>
+              <span>|</span>
+              <Link to="/cotizador" style={{ textDecoration: "none" }}>
+                Excel
+              </Link>
+            </>
           )}
+        </nav>
 
-          {paso === 2 && (
-            <div className="form-step">
-              <h2>Información de la carga</h2>
-              <p className="step-description">Cuéntanos qué deseas enviar.</p>
+        <div className="header-actions" style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+          {estaAutenticado && (
+            <>
+              <span className="user-greeting">
+                {user.username}
+              </span>
 
-              <div className="field">
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.25rem" }}>
-                  <label htmlFor="weight" style={{ margin: 0 }}>Peso <span>*</span></label>
-                  
-                  <div style={{ display: "flex", background: "#e9ecef", borderRadius: "4px", padding: "2px" }}>
-                    <button
-                      type="button"
-                      onClick={() => setFormulario({ ...formulario, unidadPeso: "kg" })}
-                      style={{
-                        padding: "2px 8px",
-                        fontSize: "0.8rem",
-                        border: "none",
-                        background: formulario.unidadPeso === "kg" ? "#fa8a0e" : "transparent",
-                        color: formulario.unidadPeso === "kg" ? "#fff" : "#495057",
-                        borderRadius: "3px",
-                        cursor: "pointer"
-                      }}
-                    >
-                      kg
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFormulario({ ...formulario, unidadPeso: "t" })}
-                      style={{
-                        padding: "2px 8px",
-                        fontSize: "0.8rem",
-                        border: "none",
-                        background: formulario.unidadPeso === "t" ? "#fa8a0e" : "transparent",
-                        color: formulario.unidadPeso === "t" ? "#fff" : "#495057",
-                        borderRadius: "3px",
-                        cursor: "pointer"
-                      }}
-                    >
-                      t
-                    </button>
+              <button
+                type="button"
+                className="button-logout"
+                onClick={() => {
+                  onLogout();
+                  window.location.href = "/";
+                }}
+              >
+                Cerrar sesión
+              </button>
+            </>
+          )}
+        </div>
+      </header>
+
+      {/* CONTENIDO PRINCIPAL */}
+      <main 
+        className="dashboard-main-wrapper" 
+        style={{ 
+          flex: 1,
+          padding: "2rem", 
+          display: "flex", 
+          flexDirection: "column", 
+          alignItems: "center", 
+          justifyContent: "center" 
+        }}
+      >
+        <section className="form-container" style={{ width: "100%", maxWidth: "600px" }}>
+          <form onSubmit={manejarEnvio}>
+            {/* ENCABEZADO CON FONDO NARANJA */}
+            <div className="form-card-header">
+              <h2>Cotiza tu Envío</h2>
+              <p className="step-description">Completa los datos de tu próximo envío.</p>
+            </div>
+
+              <div className="steps" style={{ marginTop: "1rem" }}>
+                {[1, 2].map((numeroPaso) => (
+                  <div
+                    key={numeroPaso}
+                    className={`step ${numeroPaso === paso ? "active" : ""} ${numeroPaso < paso ? "completed" : ""}`}
+                  >
+                    <span>{numeroPaso}</span>
+                    <small>{numeroPaso === 1 ? "Ruta" : "Carga"}</small>
                   </div>
-                </div>
-
-                <div className="input-with-unit">
-                  <input
-                    id="weight"
-                    type="number"
-                    name="weight"
-                    min="0.01"
-                    step="any"
-                    value={formulario.weight}
-                    onChange={manejarCambio}
-                    className={errores.weight ? "input-error" : ""}
-                    placeholder={formulario.unidadPeso === "kg" ? "Ej: 46000" : "Ej: 46"}
-                    required
-                  />
-                  <span>{formulario.unidadPeso}</span>
-                </div>
-
-                <div style={{ marginTop: "0.75rem", padding: "0.5rem", backgroundColor: "#f8f9fa", borderRadius: "4px", border: "1px solid #e9ecef" }}>
-                  <small style={{ display: "block", color: "#6c757d", marginBottom: "0.25rem", fontWeight: "bold" }}>
-                    Contenedores sugeridos:
-                  </small>
-                  {contenedoresSugeridos.map((c, idx) => (
-                    <div key={idx} style={{ fontSize: "0.95rem", color: "#212529", fontWeight: "500" }}>
-                      Contenedor {c.tipo} x {c.cantidad}
-                    </div>
-                  ))}
-                </div>
-
-                {errores.weight && <span className="error">{errores.weight}</span>}
+                ))}
               </div>
 
-              <div className="field">
-                <label htmlFor="valorCarga">Valor de carga (Opcional)</label>
-                <input
-                  id="valorCarga"
-                  type="number"
-                  name="valorCarga"
-                  min="0"
-                  step="any"
-                  value={formulario.valorCarga}
-                  onChange={manejarCambio}
-                  placeholder="Ej: 50000"
-                />
+            {paso === 1 && (
+              <div className="form-step">
+                <h3 style={{ fontSize: "1.2rem", marginBottom: "0.5rem" }}>Información del envío</h3>
+                <p className="step-description">Indica desde dónde y hacia dónde quieres realizar tu envío.</p>
 
-                {/* SELECTOR DE TASA DE ARANCEL (Visible solo si se ingresa valor de carga) */}
-                {formulario.valorCarga !== "" && !isNaN(Number(formulario.valorCarga)) && Number(formulario.valorCarga) > 0 && (
-                  <div style={{ marginTop: "0.75rem", padding: "0.5rem", backgroundColor: "#f8f9fa", borderRadius: "4px", border: "1px solid #e9ecef" }}>
-                    <label style={{ display: "block", fontSize: "0.85rem", color: "#495057", marginBottom: "0.3rem", fontWeight: "bold" }}>
-                      Tasa de Arancel Aduanero:
-                    </label>
-                    <div style={{ display: "flex", gap: "1.5rem" }}>
-                      <label style={{ fontWeight: "normal", cursor: "pointer", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                        <input
-                          type="radio"
-                          name="tasaArancel"
-                          value="6"
-                          checked={formulario.tasaArancel === "6"}
-                          onChange={manejarCambio}
-                        />
-                        6% (General)
-                      </label>
-                      <label style={{ fontWeight: "normal", cursor: "pointer", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                        <input
-                          type="radio"
-                          name="tasaArancel"
-                          value="0"
-                          checked={formulario.tasaArancel === "0"}
-                          onChange={manejarCambio}
-                        />
-                        0% (Exento)
-                      </label>
+                {cargandoTarifas ? (
+                  <p>Cargando rutas disponibles desde la base de datos...</p>
+                ) : (
+                  <>
+                    <div className="field">
+                      <label htmlFor="origin" style={{ textAlign: "left" }}>Selecciona origen <span>*</span></label>
+                      <select
+                        id="origin"
+                        name="origin"
+                        value={formulario.origin}
+                        onChange={manejarCambio}
+                        className={errores.origin ? "input-error" : ""}
+                        required
+                      >
+                        <option value="">Selecciona un origen</option>
+                        {origenesDisponibles.map((origen) => (
+                          <option key={origen} value={origen}>{origen}</option>
+                        ))}
+                      </select>
+                      {errores.origin && <span className="error">{errores.origin}</span>}
                     </div>
-                  </div>
+
+                    <div className="field">
+                      <label htmlFor="destination" style={{ textAlign: "left" }}>Selecciona destino <span>*</span></label>
+                      <select
+                        id="destination"
+                        name="destination"
+                        value={formulario.destination}
+                        onChange={manejarCambio}
+                        className={errores.destination ? "input-error" : ""}
+                        disabled={!formulario.origin}
+                        required
+                      >
+                        <option value="">Selecciona un destino</option>
+                        {destinosDisponibles.map((destino) => (
+                          <option key={destino} value={destino}>{destino}</option>
+                        ))}
+                      </select>
+
+                      {rutaSeleccionada && (
+                        <p className="transit-days" style={{ marginTop: "0.5rem", fontWeight: "bold", color: "#333" }}>
+                          Días en tránsito: {rutaSeleccionada.transito?.minDias} (mínimo) - {rutaSeleccionada.transito?.maxDias} (máximo)
+                        </p>
+                      )}
+
+                      {errores.destination && <span className="error">{errores.destination}</span>}
+                    </div>
+                  </>
                 )}
               </div>
+            )}
 
-              <div className="field">
-                <label htmlFor="description">Descripción <span>*</span></label>
-                <textarea
-                  id="description"
-                  name="description"
-                  rows="5"
-                  maxLength={200}
-                  value={formulario.description}
-                  onChange={manejarCambio}
-                  className={errores.description ? "input-error" : ""}
-                  placeholder="Describe brevemente la carga (máximo 200 caracteres)."
-                  required
-                />
-                {errores.description && <span className="error">{errores.description}</span>}
-              </div>
+            {paso === 2 && (
+              <div className="form-step">
+                <h3 style={{ fontSize: "1.2rem", marginBottom: "0.5rem" }}>Información de la carga</h3>
+                <p className="step-description">Cuéntanos qué deseas enviar.</p>
 
-              <div style={{ marginTop: "1rem", marginBottom: "1.5rem", padding: "0.75rem", backgroundColor: "#e7f5ff", borderRadius: "6px", border: "1px solid #74c0fc", textAlign: "center" }}>
-                <span style={{ display: "block", fontSize: "0.85rem", color: "#1c7ed6", fontWeight: "bold", textTransform: "uppercase" }}>
-                  Precio Estimado del Envío:
-                </span>
-                <span style={{ fontSize: "1.2rem", fontWeight: "bold", color: "#212529" }}>
-                  ${Math.round(precioEstimado.min).toLocaleString()} USD — ${Math.round(precioEstimado.max).toLocaleString()} USD
-                </span>
+                <div className="field">
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.25rem" }}>
+                    <label htmlFor="weight" style={{ margin: 0, textAlign: "left" }}>Peso <span>*</span></label>
+                    
+                    <div style={{ display: "flex", background: "#e9ecef", borderRadius: "4px", padding: "2px" }}>
+                      <button
+                        type="button"
+                        onClick={() => setFormulario({ ...formulario, unidadPeso: "kg" })}
+                        style={{
+                          padding: "2px 8px",
+                          fontSize: "0.8rem",
+                          border: "none",
+                          background: formulario.unidadPeso === "kg" ? "#fa8a0e" : "transparent",
+                          color: formulario.unidadPeso === "kg" ? "#fff" : "#495057",
+                          borderRadius: "3px",
+                          cursor: "pointer"
+                        }}
+                      >
+                        kg
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormulario({ ...formulario, unidadPeso: "t" })}
+                        style={{
+                          padding: "2px 8px",
+                          fontSize: "0.8rem",
+                          border: "none",
+                          background: formulario.unidadPeso === "t" ? "#fa8a0e" : "transparent",
+                          color: formulario.unidadPeso === "t" ? "#fff" : "#495057",
+                          borderRadius: "3px",
+                          cursor: "pointer"
+                        }}
+                      >
+                        t
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="input-with-unit">
+                    <input
+                      id="weight"
+                      type="number"
+                      name="weight"
+                      min="0.01"
+                      step="any"
+                      value={formulario.weight}
+                      onChange={manejarCambio}
+                      className={errores.weight ? "input-error" : ""}
+                      placeholder={formulario.unidadPeso === "kg" ? "Ej: 46000" : "Ej: 46"}
+                      required
+                    />
+                    <span>{formulario.unidadPeso}</span>
+                  </div>
+
+                  <div style={{ marginTop: "0.75rem", padding: "0.5rem", backgroundColor: "#f8f9fa", borderRadius: "4px", border: "1px solid #e9ecef" }}>
+                    <small style={{ display: "block", color: "#6c757d", marginBottom: "0.25rem", fontWeight: "bold" }}>
+                      Contenedores sugeridos:
+                    </small>
+                    {contenedoresSugeridos.map((c, idx) => (
+                      <div key={idx} style={{ fontSize: "0.95rem", color: "#212529", fontWeight: "500" }}>
+                        Contenedor {c.tipo} x {c.cantidad}
+                      </div>
+                    ))}
+                  </div>
+
+                  {errores.weight && <span className="error">{errores.weight}</span>}
+                </div>
+
+                <div className="field">
+                  <label htmlFor="valorCarga" style={{ textAlign: "left" }}>Valor de carga (Opcional)</label>
+                  <input
+                    id="valorCarga"
+                    type="number"
+                    name="valorCarga"
+                    min="0"
+                    step="any"
+                    value={formulario.valorCarga}
+                    onChange={manejarCambio}
+                    placeholder="Ej: 50000"
+                  />
+
+                  {formulario.valorCarga !== "" && !isNaN(Number(formulario.valorCarga)) && Number(formulario.valorCarga) > 0 && (
+                    <div style={{ marginTop: "0.75rem", padding: "0.5rem", backgroundColor: "#f8f9fa", borderRadius: "4px", border: "1px solid #e9ecef" }}>
+                      <label style={{ display: "block", fontSize: "0.85rem", color: "#495057", marginBottom: "0.3rem", fontWeight: "bold", textAlign: "left" }}>
+                        Tasa de Arancel Aduanero:
+                      </label>
+                      <div style={{ display: "flex", gap: "1.5rem" }}>
+                        <label style={{ fontWeight: "normal", cursor: "pointer", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                          <input
+                            type="radio"
+                            name="tasaArancel"
+                            value="6"
+                            checked={formulario.tasaArancel === "6"}
+                            onChange={manejarCambio}
+                          />
+                          6% (General)
+                        </label>
+                        <label style={{ fontWeight: "normal", cursor: "pointer", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                          <input
+                            type="radio"
+                            name="tasaArancel"
+                            value="0"
+                            checked={formulario.tasaArancel === "0"}
+                            onChange={manejarCambio}
+                          />
+                          0% (Exento)
+                        </label>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="field">
+                  <label htmlFor="description" style={{ textAlign: "left" }}>Descripción <span>*</span></label>
+                  <textarea
+                    id="description"
+                    name="description"
+                    rows="5"
+                    maxLength={200}
+                    value={formulario.description}
+                    onChange={manejarCambio}
+                    className={errores.description ? "input-error" : ""}
+                    placeholder="Describe brevemente la carga (máximo 200 caracteres)."
+                    required
+                  />
+                  {errores.description && <span className="error">{errores.description}</span>}
+                </div>
+
+                <div style={{ marginTop: "1rem", marginBottom: "1.5rem", padding: "0.75rem", backgroundColor: "#e7f5ff", borderRadius: "6px", border: "1px solid #74c0fc", textAlign: "center" }}>
+                  <span style={{ display: "block", fontSize: "0.85rem", color: "#1c7ed6", fontWeight: "bold", textTransform: "uppercase" }}>
+                    Precio Estimado del Envío:
+                  </span>
+                  <span style={{ fontSize: "1.2rem", fontWeight: "bold", color: "#212529" }}>
+                    ${Math.round(precioEstimado.min).toLocaleString()} USD — ${Math.round(precioEstimado.max).toLocaleString()} USD
+                  </span>
+                </div>
               </div>
+            )}
+
+            {/* CONTENEDOR DE ACCIONES / BOTONES */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "1.5rem" }}>
+              {paso === 1 ? (
+                <button 
+                  type="button" 
+                  className="button-primary-blue" 
+                  onClick={manejarContinuar} 
+                  disabled={cargandoTarifas}
+                >
+                  Continuar
+                </button>
+              ) : (
+                <button 
+                  type="submit" 
+                  className="button-primary-blue" 
+                  disabled={enviando}
+                >
+                  {enviando ? "Enviando..." : "Finalizar"}
+                </button>
+              )}
+
+              {paso > 1 && (
+                <button 
+                  type="button" 
+                  className="button-primary-blue" 
+                  onClick={manejarVolver} 
+                  disabled={enviando}
+                  style={{ textDecoration: "none", textAlign: "center", width: "100%", boxSizing: "border-box", display: "block", border: "1px solid #fa8a0e" }}
+                >
+                  Volver
+                </button>
+              )}
+
+              <Link 
+                to="/" 
+                className="button-back" 
+                style={{ textDecoration: "none", textAlign: "center", width: "100%", boxSizing: "border-box", display: "block" }}
+              >
+                Volver al dashboard
+              </Link>
             </div>
-          )}
-
-          <div className="form-actions">
-            {paso > 1 && (
-              <button type="button" className="button secondary" onClick={manejarVolver} disabled={enviando}>
-                Volver
-              </button>
-            )}
-
-            {paso === 1 ? (
-              <button type="button" className="button primary" onClick={manejarContinuar} disabled={cargandoTarifas}>
-                Continuar
-              </button>
-            ) : (
-              <button type="submit" className="button primary" disabled={enviando}>
-                {enviando ? "Enviando..." : "Finalizar"}
-              </button>
-            )}
-          </div>
-        </form>
-      </section>
-    </main>
+          </form>
+        </section>
+      </main>
+    </div>
   );
 }
 
