@@ -87,7 +87,7 @@ En una terminal:
 ```bash
 npm start
 ```
-Esto levanta el servidor en:
+Esto levanta el backend y sirve la aplicación web en:
 ```
 http://localhost:3000
 ```
@@ -96,9 +96,12 @@ Verás en consola:
 Servidor corriendo en http://localhost:3000
 ✅ Conectado a MongoDB (BD cintac)
 ```
+En modo desarrollo, Express sirve el frontend mediante Vite en el mismo puerto.
+Para servir una compilación de producción, ejecuta `npm run build` y luego inicia el
+servidor con `NODE_ENV=production` (`$env:NODE_ENV="production"` en PowerShell).
 
 ### 2. Frontend (React + Vite)
-En otra terminal:
+Opcionalmente, para trabajar con Vite en su propio servidor de desarrollo, ejecuta:
 ```bash
 npm run dev
 ```
@@ -119,8 +122,9 @@ http://localhost:5173
    - Completar los 3 pasos: Ruta → Carga → Contacto.  
    - Al finalizar, se guarda la cotización en la colección `quotations` de la BD `cintac`.
 
-3. **Informe de cotizaciones (solo admin)**  
-   - Si el usuario logueado es `admin`, se muestra una tabla con todas las cotizaciones registradas.
+3. **Historial y exportación de cotizaciones**
+   - Cada usuario puede consultar y exportar en PDF sus propias cotizaciones desde «Mis cotizaciones».
+   - El administrador puede exportar sus propias cotizaciones desde «Mis cotizaciones» o todas las cotizaciones desde «Historial cotizaciones»; el informe global también muestra el usuario que creó cada una.
 
 ---
 

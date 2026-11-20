@@ -17,21 +17,42 @@ function adminMiddleware(req, res, next) {
 
 // Función auxiliar para obtener el valor actual del dólar desde mindicador.cl
 async function obtenerValorDolar() {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 4000);
+
   try {
-    const respuesta = await fetch('https://mindicador.cl/api/dolar');
-    if (!respuesta.ok) throw new Error('No se pudo conectar con mindicador.cl');
+    const respuesta = await fetch('https://mindicador.cl/api/dolar', {
+      signal: controller.signal
+    });
+    if (!respuesta.ok) {
+      throw new Error(`mindicador.cl respondió con HTTP ${respuesta.status}`);
+    }
     
     const data = await respuesta.json();
-    // mindicador.cl retorna un arreglo 'serie' donde el primer elemento [0] es el valor más reciente
-    if (data && data.serie && data.serie.length > 0) {
-      return data.serie[0].valor;
+    const valor = Number(data?.serie?.[0]?.valor);
+    if (Number.isFinite(valor) && valor > 0) {
+      return valor;
     }
+
     return null;
   } catch (error) {
-    console.error('Error al obtener la tasa del dólar:', error);
+    console.warn('No se pudo obtener la tasa del dólar; la cotización se guardará sin conversión a CLP:', error);
     return null;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
+
+router.get('/exchange-rate', authMiddleware, async (req, res) => {
+  const tasaDolar = await obtenerValorDolar();
+  if (!tasaDolar) {
+    return res.status(503).json({
+      error: 'No se pudo obtener la tasa del dólar. Inténtalo nuevamente.'
+    });
+  }
+
+  return res.json({ tasaDolar });
+});
 
 // Crear cotización: requiere autenticación.
 router.post('/', authMiddleware, async (req, res) => {
@@ -41,6 +62,7 @@ router.post('/', authMiddleware, async (req, res) => {
       destino,
       weight,
       valorCarga,
+      monedaValorCarga = 'USD',
       description,
       contenedores,
       tarifas,
@@ -62,13 +84,24 @@ router.post('/', authMiddleware, async (req, res) => {
       weight === null ||
       !Number.isFinite(pesoToneladas) ||
       pesoToneladas <= 0 ||
+      !['USD', 'CLP'].includes(monedaValorCarga) ||
       !contenedores ||
       !tarifas ||
       typeof tarifas.min !== 'number' ||
       typeof tarifas.max !== 'number' ||
       !transito ||
       typeof transito.minDias !== 'number' ||
-      typeof transito.maxDias !== 'number'
+      typeof transito.maxDias !== 'number' ||
+      (
+        precio !== undefined &&
+        (
+          !precio ||
+          typeof precio.min !== 'number' ||
+          !Number.isFinite(precio.min) ||
+          typeof precio.max !== 'number' ||
+          !Number.isFinite(precio.max)
+        )
+      )
     ) {
       return res.status(400).json({
         error: 'Los datos de la cotización no son válidos'
@@ -80,8 +113,14 @@ router.post('/', authMiddleware, async (req, res) => {
     // Obtener la tasa de cambio actual USD -> CLP desde mindicador.cl
     const tasaDolar = await obtenerValorDolar();
 
+    if (tieneValorCarga && monedaValorCarga === 'CLP' && !tasaDolar) {
+      return res.status(503).json({
+        error: 'No se pudo obtener la tasa del dólar para convertir el valor de carga. Inténtalo nuevamente.'
+      });
+    }
+
     let precioCLPFinal = undefined;
-    if (tieneValorCarga && precio && tasaDolar) {
+    if (precio && tasaDolar) {
       precioCLPFinal = {
         min: Number(precio.min) * tasaDolar,
         max: Number(precio.max) * tasaDolar
@@ -94,7 +133,8 @@ router.post('/', authMiddleware, async (req, res) => {
       destino: destino.trim(),
       weight: pesoToneladas,
       valorCarga: tieneValorCarga ? Number(valorCarga) : undefined,
-      precio: tieneValorCarga && precio ? {
+      monedaValorCarga: tieneValorCarga ? monedaValorCarga : undefined,
+      precio: precio ? {
         min: Number(precio.min),
         max: Number(precio.max)
       } : undefined,

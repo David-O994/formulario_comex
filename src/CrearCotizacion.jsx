@@ -8,6 +8,7 @@ const formularioInicial = {
   weight: "",
   unidadPeso: "kg", // "kg" o "t"
   valorCarga: "",   // Opcional
+  monedaValorCarga: "USD",
   tasaArancel: "6", // "6" o "0"
   description: "",
 };
@@ -20,11 +21,14 @@ function CrearCotizacion({ user, token, onLogout }) {
 
   const [tarifasDB, setTarifasDB] = useState([]);
   const [cargandoTarifas, setCargandoTarifas] = useState(true);
+  const [tasaDolar, setTasaDolar] = useState(null);
+  const [errorTasaDolar, setErrorTasaDolar] = useState("");
+  const cargandoTasaDolar = formulario.monedaValorCarga === "CLP" && !tasaDolar && !errorTasaDolar;
 
   useEffect(() => {
     const fetchTarifasDB = async () => {
       try {
-        const respuesta = await fetch("http://localhost:3000/api/tarifa-cotizador");
+        const respuesta = await fetch("/api/tarifa-cotizador");
         if (respuesta.ok) {
           const data = await respuesta.json();
           setTarifasDB(data);
@@ -38,6 +42,39 @@ function CrearCotizacion({ user, token, onLogout }) {
 
     fetchTarifasDB();
   }, []);
+
+  useEffect(() => {
+    if (formulario.monedaValorCarga !== "CLP") {
+      return;
+    }
+
+    let cancelado = false;
+    const obtenerTasaDolar = async () => {
+      try {
+        const respuesta = await fetch("/api/quotations/exchange-rate", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await respuesta.json();
+        if (!respuesta.ok) {
+          throw new Error(data.error || "No se pudo obtener la tasa del dólar.");
+        }
+
+        if (!cancelado) {
+          setTasaDolar(data.tasaDolar);
+        }
+      } catch (error) {
+        if (!cancelado) {
+          setTasaDolar(null);
+          setErrorTasaDolar(error.message || "No se pudo obtener la tasa del dólar.");
+        }
+      }
+    };
+
+    obtenerTasaDolar();
+    return () => {
+      cancelado = true;
+    };
+  }, [formulario.monedaValorCarga, token]);
 
   const origenesDisponibles = Array.from(
     new Set(tarifasDB.map((t) => t.origen))
@@ -131,10 +168,17 @@ function CrearCotizacion({ user, token, onLogout }) {
       }
     });
 
-    const valorCargaNum = parseFloat(formulario.valorCarga);
-    const tieneValorCarga = !isNaN(valorCargaNum) && valorCargaNum > 0;
+    const valorCargaIngresado = parseFloat(formulario.valorCarga);
+    const tieneValorCarga = !isNaN(valorCargaIngresado) && valorCargaIngresado > 0;
 
     if (!tieneValorCarga) {
+      return { min: fleteMin, max: fleteMax };
+    }
+
+    const valorCargaNum = formulario.monedaValorCarga === "CLP"
+      ? valorCargaIngresado / tasaDolar
+      : valorCargaIngresado;
+    if (!Number.isFinite(valorCargaNum)) {
       return { min: fleteMin, max: fleteMax };
     }
 
@@ -176,6 +220,11 @@ function CrearCotizacion({ user, token, onLogout }) {
 
   const manejarCambio = (evento) => {
     const { name, value } = evento.target;
+
+    if (name === "monedaValorCarga") {
+      setTasaDolar(null);
+      setErrorTasaDolar("");
+    }
 
     setFormulario((anterior) => {
       const nuevoFormulario = { ...anterior, [name]: value };
@@ -246,6 +295,16 @@ function CrearCotizacion({ user, token, onLogout }) {
       return;
     }
 
+    if (
+      formulario.monedaValorCarga === "CLP" &&
+      formulario.valorCarga !== "" &&
+      Number(formulario.valorCarga) > 0 &&
+      !tasaDolar
+    ) {
+      alert(errorTasaDolar || "No se pudo obtener la tasa del dólar para convertir el valor de carga.");
+      return;
+    }
+
     setEnviando(true);
 
     const pesoKg = obtenerPesoEnKg();
@@ -257,10 +316,11 @@ function CrearCotizacion({ user, token, onLogout }) {
       destino: formulario.destination.trim(),
       weight: pesoToneladas,
       valorCarga: tieneValorCarga ? Number(formulario.valorCarga) : undefined,
-      precio: tieneValorCarga ? {
+      monedaValorCarga: formulario.monedaValorCarga,
+      precio: {
         min: precioEstimado.min,
         max: precioEstimado.max,
-      } : undefined,
+      },
       description: formulario.description.trim(),
       contenedores: totalContenedores,
       tarifas: {
@@ -274,7 +334,7 @@ function CrearCotizacion({ user, token, onLogout }) {
     };
 
     try {
-      const respuesta = await fetch("http://localhost:3000/api/quotations", {
+      const respuesta = await fetch("/api/quotations", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -541,6 +601,16 @@ function CrearCotizacion({ user, token, onLogout }) {
 
                 <div className="field">
                   <label htmlFor="valorCarga" style={{ textAlign: "left" }}>Valor de carga (Opcional)</label>
+                  <select
+                    id="monedaValorCarga"
+                    name="monedaValorCarga"
+                    value={formulario.monedaValorCarga}
+                    onChange={manejarCambio}
+                    aria-label="Moneda del valor de carga"
+                  >
+                    <option value="USD">Dólares (USD)</option>
+                    <option value="CLP">Pesos chilenos (CLP)</option>
+                  </select>
                   <input
                     id="valorCarga"
                     type="number"
@@ -549,8 +619,17 @@ function CrearCotizacion({ user, token, onLogout }) {
                     step="any"
                     value={formulario.valorCarga}
                     onChange={manejarCambio}
-                    placeholder="Ej: 50000"
+                    placeholder={formulario.monedaValorCarga === "USD" ? "Ej: 50000 USD" : "Ej: 45000000 CLP"}
                   />
+                  {formulario.monedaValorCarga === "CLP" && (
+                    <small role="status" style={{ display: "block", marginTop: "0.35rem" }}>
+                      {cargandoTasaDolar
+                        ? "Obteniendo tasa de cambio..."
+                        : tasaDolar
+                          ? `1 USD = ${tasaDolar.toLocaleString("es-CL")} CLP`
+                          : errorTasaDolar}
+                    </small>
+                  )}
 
                   {formulario.valorCarga !== "" && !isNaN(Number(formulario.valorCarga)) && Number(formulario.valorCarga) > 0 && (
                     <div style={{ marginTop: "0.75rem", padding: "0.5rem", backgroundColor: "#f8f9fa", borderRadius: "4px", border: "1px solid #e9ecef" }}>

@@ -89,6 +89,28 @@ html, body, #root {
   border-color: #fa8a0e;
 }
 
+.button-export-pdf {
+  margin-bottom: 20px;
+  padding: 10px 16px;
+  border: 1px solid #173b65;
+  border-radius: 8px;
+  background: #173b65;
+  color: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.button-export-pdf:hover {
+  background: #ffffff;
+  color: #173b65;
+}
+
+.button-export-pdf:focus-visible {
+  outline: 3px solid #60a5fa;
+  outline-offset: 3px;
+}
+
 .dashboard-content {
   width: 100%;
   max-width: 1150px;

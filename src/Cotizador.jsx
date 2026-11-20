@@ -152,7 +152,7 @@ export default function Cotizador({ user, token, onLogout }) {
           {/* ENCABEZADO CON FONDO NARANJA */}
           <div className="form-card-header">
             <h2>Módulo Cotizador</h2>
-            <p className="step-description">Sube y gestiona las tarifas desde Excel hacia la nueva tabla de MongoDB.</p>
+            <p className="step-description">Al cargar un Excel, sus tarifas reemplazan la tabla actual de MongoDB.</p>
           </div>
 
           <div style={{ marginBottom: '2rem', border: '1px solid #e2e8f0', padding: '1.5rem', borderRadius: '8px', background: '#f8f9fa' }}>
@@ -178,7 +178,6 @@ export default function Cotizador({ user, token, onLogout }) {
             <table className="custom-table" border="1" cellPadding="8" cellSpacing="0" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
               <thead>
                 <tr>
-                  <th>ID</th>
                   <th>Origen</th>
                   <th>Destino</th>
                   <th>Tarifa 20'</th>
@@ -191,7 +190,6 @@ export default function Cotizador({ user, token, onLogout }) {
                 {tarifas.length > 0 ? (
                   tarifas.map((item) => (
                     <tr key={item._id}>
-                      <td><code>{item._id}</code></td>
                       <td>{item.origen}</td>
                       <td>{item.destino}</td>
                       <td>Min: ${item.tarifas?.['20']?.min} / Max: ${item.tarifas?.['20']?.max}</td>
@@ -202,7 +200,7 @@ export default function Cotizador({ user, token, onLogout }) {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="7" style={{ textAlign: 'center', padding: '1rem' }}>No hay registros en esta tabla.</td>
+                    <td colSpan="6" style={{ textAlign: 'center', padding: '1rem' }}>No hay registros en esta tabla.</td>
                   </tr>
                 )}
               </tbody>

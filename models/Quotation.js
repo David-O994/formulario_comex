@@ -38,6 +38,15 @@ const quotationSchema = new mongoose.Schema({
     type: Number,
     required: false
   },
+  monedaValorCarga: {
+    type: String,
+    enum: ['USD', 'CLP'],
+    default: 'USD'
+  },
+  precio: {
+    min: { type: Number, required: false },
+    max: { type: Number, required: false }
+  },
   precioCLP: {
     min: { type: Number, required: false },
     max: { type: Number, required: false }
