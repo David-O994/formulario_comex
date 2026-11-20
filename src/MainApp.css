@@ -89,6 +89,29 @@ html, body, #root {
   border-color: #fa8a0e;
 }
 
+.button-export-pdf {
+  background-color: #004A92;
+  color: #ffffff;
+  border: 1px solid #004A92;
+  border-radius: 6px;
+  padding: 10px 18px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease, opacity 0.2s ease, border-color 0.2s ease;
+}
+
+.button-export-pdf:hover:not(:disabled) {
+  background: #ffffff;
+  color: #004A92;
+  border-color: #004A92;
+}
+
+.button-export-pdf:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 .dashboard-content {
   width: 100%;
   max-width: 1150px;

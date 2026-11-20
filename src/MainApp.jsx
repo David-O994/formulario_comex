@@ -2,13 +2,148 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import "./MainApp.css";
 
+const cargarImagen = (src) =>
+  new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = (err) => reject(err);
+    img.src = src;
+  });
+
 function MainApp({ user, token, onLogout, forcedView }) {
   const [dataList, setDataList] = useState([]);
   const [loadingData, setLoadingData] = useState(false);
+  const [exportandoPDF, setExportandoPDF] = useState(false);
 
   const esAdmin = user?.role === "admin";
   const esUsuario = Boolean(user && token && user.role === "usuario");
   const estaAutenticado = Boolean(user && token);
+  const esHistorialGlobalAdmin = esAdmin && forcedView === "historial";
+
+  const exportarCotizacionesPDF = async () => {
+    setExportandoPDF(true);
+
+    try {
+      const [{ jsPDF }, { default: autoTable }] = await Promise.all([
+        import("jspdf"),
+        import("jspdf-autotable"),
+      ]);
+
+      const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+      const fechaInforme = new Date().toLocaleString("es-CL");
+      const incluirUsuario = esHistorialGlobalAdmin;
+
+      const columnas = [
+        "Fecha",
+        ...(incluirUsuario ? ["Usuario"] : []),
+        "Origen",
+        "Destino",
+        "Tránsito",
+        "Peso (t)",
+        "Contenedores",
+        "Tarifa est. (USD)",
+        "Valor carga",
+        "Precio estimado",
+        "Descripción",
+      ];
+
+      const filas = dataList.map((cotizacion) => {
+        const tarifa = cotizacion.tarifas
+          ? `$${cotizacion.tarifas.min?.toLocaleString("es-CL")} - $${cotizacion.tarifas.max?.toLocaleString("es-CL")}`
+          : cotizacion.cost
+            ? `$${cotizacion.cost.toLocaleString("es-CL")}`
+            : "—";
+
+        const precio =
+          cotizacion.precioCLP?.min !== undefined && cotizacion.precioCLP?.max !== undefined
+            ? `$${Math.round(cotizacion.precioCLP.min).toLocaleString("es-CL")} - $${Math.round(cotizacion.precioCLP.max).toLocaleString("es-CL")} CLP`
+            : cotizacion.precio?.min !== undefined && cotizacion.precio?.max !== undefined
+              ? `$${Math.round(cotizacion.precio.min).toLocaleString("en-US")} - $${Math.round(cotizacion.precio.max).toLocaleString("en-US")} USD`
+              : "—";
+
+        return [
+          cotizacion.createdAt
+            ? new Date(cotizacion.createdAt).toLocaleDateString("es-CL")
+            : "—",
+          ...(incluirUsuario ? [cotizacion.userId?.username ?? "—"] : []),
+          cotizacion.origen ?? "—",
+          cotizacion.destino ?? "—",
+          cotizacion.transito
+            ? `${cotizacion.transito.minDias} - ${cotizacion.transito.maxDias} días`
+            : cotizacion.days !== undefined
+              ? `${cotizacion.days} días`
+              : "—",
+          cotizacion.weight !== undefined ? `${cotizacion.weight} t` : "—",
+          cotizacion.contenedores ?? "—",
+          tarifa,
+          cotizacion.valorCarga
+            ? `$${cotizacion.valorCarga.toLocaleString("es-CL")}`
+            : "—",
+          precio,
+          cotizacion.description ?? "—",
+        ];
+      });
+
+      let cursorY = 14;
+
+      try {
+        const logo = await cargarImagen("/cintac_logo.png");
+        const anchoLogo = 34; // mm
+        const altoLogo =
+          logo.naturalWidth && logo.naturalHeight
+            ? (logo.naturalHeight / logo.naturalWidth) * anchoLogo
+            : 10;
+
+        pdf.addImage(logo, "PNG", 14, cursorY, anchoLogo, altoLogo);
+        cursorY += altoLogo + 6;
+      } catch (imgError) {
+        console.warn("No se pudo cargar el logo para el PDF:", imgError);
+      }
+
+      pdf.setFontSize(16);
+      pdf.text(
+        incluirUsuario ? "Informe de todas las cotizaciones" : "Informe de mis cotizaciones",
+        14,
+        cursorY
+      );
+
+      cursorY += 6;
+      pdf.setFontSize(9);
+      pdf.text(
+        `Generado: ${fechaInforme} | Total de registros: ${dataList.length}${dataList.length === 0 ? " | No se registran cotizaciones" : ""}`,
+        14,
+        cursorY
+      );
+
+      autoTable(pdf, {
+        head: [columnas],
+        body: filas,
+        startY: cursorY + 5,
+        theme: "grid",
+        styles: { fontSize: 7, cellPadding: 2, overflow: "linebreak" },
+        headStyles: { fillColor: [23, 59, 101] },
+        columnStyles: { [columnas.length - 1]: { cellWidth: 48 } },
+        didDrawPage: ({ pageNumber }) => {
+          pdf.setFontSize(8);
+          pdf.text(
+            `Página ${pageNumber}`,
+            pdf.internal.pageSize.getWidth() - 14,
+            pdf.internal.pageSize.getHeight() - 7,
+            { align: "right" }
+          );
+        },
+      });
+
+      const alcance = incluirUsuario ? "todas" : "propias";
+      const fechaArchivo = new Date().toISOString().slice(0, 10);
+      pdf.save(`informe-cotizaciones-${alcance}-${fechaArchivo}.pdf`);
+    } catch (error) {
+      console.error("Error al generar el informe PDF:", error);
+      alert("No se pudo generar el informe PDF. Inténtalo nuevamente.");
+    } finally {
+      setExportandoPDF(false);
+    }
+  };
 
   // Cargar datos según la vista activa (Historial de cotizaciones o Lista de usuarios)
   useEffect(() => {
@@ -235,6 +370,20 @@ function MainApp({ user, token, onLogout, forcedView }) {
 
               <div style={{ padding: "30px" }}>
                 {loadingData && <p style={{ textAlign: "center", padding: "1rem" }}>Cargando cotizaciones...</p>}
+
+                {/* BOTÓN DE EXPORTACIÓN */}
+                {!loadingData && (
+                  <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "1rem" }}>
+                    <button
+                      type="button"
+                      className="button-export-pdf"
+                      onClick={exportarCotizacionesPDF}
+                      disabled={exportandoPDF}
+                    >
+                      {exportandoPDF ? "Generando PDF..." : "Exportar informe PDF"}
+                    </button>
+                  </div>
+                )}
 
                 {!loadingData && dataList.length === 0 && (
                   <p style={{ textAlign: "center", padding: "1rem" }}>No hay cotizaciones para mostrar.</p>
