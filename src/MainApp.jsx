@@ -13,15 +13,18 @@ const cargarImagen = (src) =>
 function MainApp({ user, token, onLogout, forcedView }) {
   const [dataList, setDataList] = useState([]);
   const [loadingData, setLoadingData] = useState(false);
-  const [exportandoPDF, setExportandoPDF] = useState(false);
+  const [exportandoId, setExportandoId] = useState(null);
 
   const esAdmin = user?.role === "admin";
   const esUsuario = Boolean(user && token && user.role === "usuario");
   const estaAutenticado = Boolean(user && token);
   const esHistorialGlobalAdmin = esAdmin && forcedView === "historial";
 
-  const exportarCotizacionesPDF = async () => {
-    setExportandoPDF(true);
+  const exportarCotizacionPDF = async (cotizacion) => {
+    if (!cotizacion) return;
+
+    const cotizacionId = cotizacion._id ?? "sin-id";
+    setExportandoId(cotizacionId);
 
     try {
       const [{ jsPDF }, { default: autoTable }] = await Promise.all([
@@ -33,9 +36,14 @@ function MainApp({ user, token, onLogout, forcedView }) {
       const fechaInforme = new Date().toLocaleString("es-CL");
       const incluirUsuario = esHistorialGlobalAdmin;
 
+      const nombreUsuario =
+        cotizacion.userId?.username ||
+        (!incluirUsuario ? user?.username : null) ||
+        "usuario";
+
       const columnas = [
         "Fecha",
-        ...(incluirUsuario ? ["Usuario"] : []),
+        "Usuario",
         "Origen",
         "Destino",
         "Tránsito",
@@ -47,42 +55,42 @@ function MainApp({ user, token, onLogout, forcedView }) {
         "Descripción",
       ];
 
-      const filas = dataList.map((cotizacion) => {
-        const tarifa = cotizacion.tarifas
-          ? `$${cotizacion.tarifas.min?.toLocaleString("es-CL")} - $${cotizacion.tarifas.max?.toLocaleString("es-CL")}`
-          : cotizacion.cost
-            ? `$${cotizacion.cost.toLocaleString("es-CL")}`
+      const tarifa = cotizacion.tarifas
+        ? `$${cotizacion.tarifas.min?.toLocaleString("es-CL")} - $${cotizacion.tarifas.max?.toLocaleString("es-CL")}`
+        : cotizacion.cost
+          ? `$${cotizacion.cost.toLocaleString("es-CL")}`
+          : "—";
+
+      const precio =
+        cotizacion.precioCLP?.min !== undefined && cotizacion.precioCLP?.max !== undefined
+          ? `$${Math.round(cotizacion.precioCLP.min).toLocaleString("es-CL")} - $${Math.round(cotizacion.precioCLP.max).toLocaleString("es-CL")} CLP`
+          : cotizacion.precio?.min !== undefined && cotizacion.precio?.max !== undefined
+            ? `$${Math.round(cotizacion.precio.min).toLocaleString("en-US")} - $${Math.round(cotizacion.precio.max).toLocaleString("en-US")} USD`
             : "—";
 
-        const precio =
-          cotizacion.precioCLP?.min !== undefined && cotizacion.precioCLP?.max !== undefined
-            ? `$${Math.round(cotizacion.precioCLP.min).toLocaleString("es-CL")} - $${Math.round(cotizacion.precioCLP.max).toLocaleString("es-CL")} CLP`
-            : cotizacion.precio?.min !== undefined && cotizacion.precio?.max !== undefined
-              ? `$${Math.round(cotizacion.precio.min).toLocaleString("en-US")} - $${Math.round(cotizacion.precio.max).toLocaleString("en-US")} USD`
-              : "—";
-
-        return [
+      const filas = [
+        [
           cotizacion.createdAt
             ? new Date(cotizacion.createdAt).toLocaleDateString("es-CL")
-            : "—",
-          ...(incluirUsuario ? [cotizacion.userId?.username ?? "—"] : []),
-          cotizacion.origen ?? "—",
-          cotizacion.destino ?? "—",
+            : "—", // 1. Fecha
+          nombreUsuario, // 2. Usuario
+          cotizacion.origen ?? "—", // 3. Origen
+          cotizacion.destino ?? "—", // 4. Destino
           cotizacion.transito
             ? `${cotizacion.transito.minDias} - ${cotizacion.transito.maxDias} días`
             : cotizacion.days !== undefined
               ? `${cotizacion.days} días`
-              : "—",
-          cotizacion.weight !== undefined ? `${cotizacion.weight} t` : "—",
-          cotizacion.contenedores ?? "—",
-          tarifa,
+              : "—", // 5. Tránsito
+          cotizacion.weight !== undefined ? `${cotizacion.weight} t` : "—", // 6. Peso (t)
+          cotizacion.contenedores ?? "—", // 7. Contenedores
+          tarifa, // 8. Tarifa est. (USD)
           cotizacion.valorCarga
             ? `$${cotizacion.valorCarga.toLocaleString("es-CL")}`
-            : "—",
-          precio,
-          cotizacion.description ?? "—",
-        ];
-      });
+            : "—", // 9. Valor carga
+          precio, // 10. Precio estimado
+          cotizacion.description ?? "—", // 11. Descripción
+        ],
+      ];
 
       let cursorY = 14;
 
@@ -102,26 +110,32 @@ function MainApp({ user, token, onLogout, forcedView }) {
 
       pdf.setFontSize(16);
       pdf.text(
-        incluirUsuario ? "Informe de todas las cotizaciones" : "Informe de mis cotizaciones",
+        "Informe de cotización",
         14,
         cursorY
       );
 
       cursorY += 6;
       pdf.setFontSize(9);
-      pdf.text(
-        `Generado: ${fechaInforme} | Total de registros: ${dataList.length}${dataList.length === 0 ? " | No se registran cotizaciones" : ""}`,
-        14,
-        cursorY
-      );
+      pdf.text(`Generado: ${fechaInforme}`, 14, cursorY);
 
       autoTable(pdf, {
         head: [columnas],
         body: filas,
         startY: cursorY + 5,
         theme: "grid",
-        styles: { fontSize: 7, cellPadding: 2, overflow: "linebreak" },
-        headStyles: { fillColor: [23, 59, 101] },
+        styles: {
+          fontSize: 7,
+          cellPadding: 2,
+          overflow: "linebreak",
+        },
+        headStyles: {
+          fillColor: [0, 74, 146],
+          textColor: [255, 255, 255],
+        },
+        bodyStyles: {
+          textColor: [0, 0, 0],
+        },
         columnStyles: { [columnas.length - 1]: { cellWidth: 48 } },
         didDrawPage: ({ pageNumber }) => {
           pdf.setFontSize(8);
@@ -134,14 +148,22 @@ function MainApp({ user, token, onLogout, forcedView }) {
         },
       });
 
-      const alcance = incluirUsuario ? "todas" : "propias";
-      const fechaArchivo = new Date().toISOString().slice(0, 10);
-      pdf.save(`informe-cotizaciones-${alcance}-${fechaArchivo}.pdf`);
+      const ahora = new Date();
+const pad2 = (n) => String(n).padStart(2, "0");
+
+const dia = pad2(ahora.getDate());
+const mes = pad2(ahora.getMonth() + 1);
+const anio = ahora.getFullYear();
+const horaMinSeg = `${pad2(ahora.getHours())}${pad2(ahora.getMinutes())}${pad2(ahora.getSeconds())}`;
+
+const usuarioSanitizado = String(nombreUsuario).trim().replace(/[^a-zA-Z0-9_-]/g, "_");
+
+pdf.save(`informe-cotizacion-${usuarioSanitizado}-${dia}-${mes}-${anio}-${horaMinSeg}.pdf`);
     } catch (error) {
       console.error("Error al generar el informe PDF:", error);
       alert("No se pudo generar el informe PDF. Inténtalo nuevamente.");
     } finally {
-      setExportandoPDF(false);
+      setExportandoId(null);
     }
   };
 
@@ -371,20 +393,6 @@ function MainApp({ user, token, onLogout, forcedView }) {
               <div style={{ padding: "30px" }}>
                 {loadingData && <p style={{ textAlign: "center", padding: "1rem" }}>Cargando cotizaciones...</p>}
 
-                {/* BOTÓN DE EXPORTACIÓN */}
-                {!loadingData && (
-                  <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "1rem" }}>
-                    <button
-                      type="button"
-                      className="button-export-pdf"
-                      onClick={exportarCotizacionesPDF}
-                      disabled={exportandoPDF}
-                    >
-                      {exportandoPDF ? "Generando PDF..." : "Exportar informe PDF"}
-                    </button>
-                  </div>
-                )}
-
                 {!loadingData && dataList.length === 0 && (
                   <p style={{ textAlign: "center", padding: "1rem" }}>No hay cotizaciones para mostrar.</p>
                 )}
@@ -405,42 +413,59 @@ function MainApp({ user, token, onLogout, forcedView }) {
                           <th>Precio</th>
                           <th>Fecha</th>
                           {esAdmin && forcedView === "historial" && <th>Usuario</th>}
+                          <th>Acciones</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {dataList.map((q) => (
-                          <tr key={q._id}>
-                            <td>{q.origen}</td>
-                            <td>{q.destino}</td>
-                            <td>
-                              {q.transito 
-                                ? `${q.transito.minDias} - ${q.transito.maxDias} días` 
-                                : (q.days !== undefined ? `${q.days} días` : "—")}
-                            </td>
-                            <td>{q.weight} t</td>
-                            <td>{q.contenedores ?? "—"}</td>
-                            <td>
-                              {q.tarifas 
-                                ? `$${q.tarifas.min?.toLocaleString()} - $${q.tarifas.max?.toLocaleString()}` 
-                                : (q.cost ? `$${q.cost.toLocaleString()}` : "—")}
-                            </td>
-                            <td>{q.valorCarga ? `$${q.valorCarga.toLocaleString()}` : "—"}</td>
-                            <td>{q.description}</td>
-                            <td>
-                              {q.precioCLP && q.precioCLP.min !== undefined && q.precioCLP.max !== undefined
-                                ? (q.precioCLP.min === q.precioCLP.max
-                                    ? `$${Math.round(q.precioCLP.min).toLocaleString('es-CL')} CLP`
-                                    : `$${Math.round(q.precioCLP.min).toLocaleString('es-CL')} - $${Math.round(q.precioCLP.max).toLocaleString('es-CL')} CLP`)
-                                : "—"}
-                            </td>
-                            <td>
-                              {q.createdAt
-                                ? new Date(q.createdAt).toLocaleDateString("es-CL")
-                                : "—"}
-                            </td>
-                            {esAdmin && forcedView === "historial" && <td>{q.userId?.username ?? "—"}</td>}
-                          </tr>
-                        ))}
+                        {dataList.map((q) => {
+                          const cotizacionId = q._id ?? "sin-id";
+                          const estaExportandoFila = exportandoId === cotizacionId;
+
+                          return (
+                            <tr key={cotizacionId}>
+                              <td>{q.origen}</td>
+                              <td>{q.destino}</td>
+                              <td>
+                                {q.transito 
+                                  ? `${q.transito.minDias} - ${q.transito.maxDias} días` 
+                                  : (q.days !== undefined ? `${q.days} días` : "—")}
+                              </td>
+                              <td>{q.weight} t</td>
+                              <td>{q.contenedores ?? "—"}</td>
+                              <td>
+                                {q.tarifas 
+                                  ? `$${q.tarifas.min?.toLocaleString()} - $${q.tarifas.max?.toLocaleString()}` 
+                                  : (q.cost ? `$${q.cost.toLocaleString()}` : "—")}
+                              </td>
+                              <td>{q.valorCarga ? `$${q.valorCarga.toLocaleString()}` : "—"}</td>
+                              <td>{q.description}</td>
+                              <td>
+                                {q.precioCLP && q.precioCLP.min !== undefined && q.precioCLP.max !== undefined
+                                  ? (q.precioCLP.min === q.precioCLP.max
+                                      ? `$${Math.round(q.precioCLP.min).toLocaleString('es-CL')} CLP`
+                                      : `$${Math.round(q.precioCLP.min).toLocaleString('es-CL')} - $${Math.round(q.precioCLP.max).toLocaleString('es-CL')} CLP`)
+                                  : "—"}
+                              </td>
+                              <td>
+                                {q.createdAt
+                                  ? new Date(q.createdAt).toLocaleDateString("es-CL")
+                                  : "—"}
+                              </td>
+                              {esAdmin && forcedView === "historial" && <td>{q.userId?.username ?? "—"}</td>}
+                              <td>
+                                <button
+                                  type="button"
+                                  className="button-export-pdf"
+                                  onClick={() => exportarCotizacionPDF(q)}
+                                  disabled={estaExportandoFila}
+                                  style={{ whiteSpace: "nowrap", padding: "6px 12px", fontSize: "0.8rem" }}
+                                >
+                                  {estaExportandoFila ? "Generando PDF..." : "Exportar a PDF"}
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
